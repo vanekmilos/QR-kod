@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1874cd">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="QR Platba">
+<link id="apple-icon" rel="apple-touch-icon">
+<link id="pwa-manifest" rel="manifest">
+<title>Generátor QR Platby – SPD / EPC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root {
+  --blue: #1874cd; --blue-h: #115290;
+  --gray: #e0e0e0; --gray-h: #c7c7c7;
+  --red:  #d9534f; --red-h:  #c9302c;
+  --bg:   #f4f7f9; --card:   #ffffff;
+  --text: #333;    --border: #ccc;
+}
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text); margin: 0; padding: 2rem;
+  display: flex; justify-content: center; }
+.container { max-width: 920px; width: 100%; background: var(--card); padding: 2rem;
+  border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  display: flex; flex-wrap: wrap; gap: 2rem; }
+.col-form, .col-qr { flex: 1; min-width: 300px; }
+h1 { font-size: 1.8rem; margin: 0 0 .5rem; color: #1a202c; }
+.sub { color: #555; margin-bottom: 1.5rem; line-height: 1.6; }
+.fg { margin-bottom: 1rem; }
+.fg label { display: block; margin-bottom: .4rem; font-weight: 600; }
+.fg input, .fg select, .fg textarea {
+  width: 100%; padding: .7rem; border: 1px solid var(--border);
+  border-radius: 4px; font-size: 1rem; }
+.fg textarea { resize: vertical; min-height: 70px; }
+.hint { font-size: .8rem; color: #888; margin-top: 3px; }
+.row3 { display: flex; align-items: flex-end; gap: 8px; }
+.row3 .fg { margin-bottom: 0; }
+.row3 .sep { font-size: 1.2rem; font-weight: 700; color: #888; padding-bottom: 9px; }
+.f-pre  { flex: 0 0 90px; }
+.f-num  { flex: 1; min-width: 80px; }
+.f-bank { flex: 0 0 80px; }
+.f-amt  { flex: 1; }
+.f-cur  { flex: 0 0 90px; }
+.btns { display: flex; gap: 1rem; margin-top: 1.5rem; }
+.btn { padding: .7rem 1.2rem; border: none; border-radius: 4px;
+  font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; }
+.btn-p  { background: var(--blue); color: #fff; }
+.btn-p:hover { background: var(--blue-h); }
+.btn-s  { background: var(--gray); color: var(--text); }
+.btn-s:hover { background: var(--gray-h); }
+.btn-d  { background: var(--red);  color: #fff; }
+.btn-d:hover { background: var(--red-h); }
+.acc-row { display: flex; gap: .5rem; align-items: center; }
+.acc-row select { flex: 1; }
+.acc-row button { flex: 0 0 38px; padding: .5rem; font-size: 1.1rem; }
+/* format indicator */
+.fi { display: flex; align-items: center; gap: 10px;
+  border-radius: 6px; padding: 10px 14px; margin-bottom: 1.2rem;
+  font-size: .9rem; border: 1px solid; }
+.fi-epc { background: #e8f4e8; border-color: #b2d8b2; }
+.fi-spd { background: #fff8e8; border-color: #f0d080; }
+.fi-icon { font-size: 1.4rem; }
+.fi-title { font-weight: 700; }
+.fi-desc  { font-size: .82rem; color: #555; }
+/* QR panel */
+.qr-panel { position: sticky; top: 2rem; text-align: center; padding: 1rem;
+  border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }
+.qr-panel h2 { margin-top: 0; color: #444; }
+#qr-ph { min-height: 280px; display: flex; align-items: center;
+  justify-content: center; color: #888; font-style: italic; }
+#qr-wrap { display: none; justify-content: center; }
+#qr-fmt  { margin-top: .6rem; font-size: .8rem; color: #888; min-height: 1em; }
+#btn-dl  { margin-top: .8rem; display: none; }
+/* modal */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.modal { background: #fff; padding: 2rem; border-radius: 8px;
+  width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,.3); }
+.modal h2 { margin-top: 0; }
+.hidden { display: none !important; }
+/* radio group */
+.rg { display: flex; gap: 1.5rem; margin-top: 6px; }
+.rg label { font-weight: 400; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- ── levý sloupec ─────────────────────────────────────────── -->
+  <div class="col-form">
+    <h1>Generátor QR Platby</h1>
+    <p class="sub">Formát se přepíná automaticky: <b>SPD</b> pro CZK platby, <b>EPC QR</b> pro SEPA (IT, ES, EU).</p>
+
+    <div id="fi" class="fi fi-epc">
+      <span id="fi-icon" class="fi-icon">🇪🇺</span>
+      <div>
+        <div id="fi-title" class="fi-title">EPC QR Code (SEPA)</div>
+        <div id="fi-desc"  class="fi-desc">Pro IT, ES a ostatní EU banky</div>
+      </div>
+    </div>
+
+    <form id="mainForm">
+      <div class="fg">
+        <label>Uložené bankovní účty</label>
+        <div class="acc-row">
+          <select id="accSel"></select>
+          <button type="button" id="btnAdd" class="btn btn-p" title="Přidat účet">+</button>
+          <button type="button" id="btnDel" class="btn btn-d" title="Odstranit účet">−</button>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label for="beneficiary">Jméno příjemce <span style="color:#f44">*</span></label>
+        <input id="beneficiary" type="text" placeholder="Jan Novák nebo Empresa S.L." maxlength="70" required>
+      </div>
+
+      <div class="fg">
+        <label for="iban">IBAN <span style="color:#f44">*</span></label>
+        <input id="iban" type="text" placeholder="CZ65 0800 … nebo ES12 3456 …" maxlength="34" required autocomplete="off" spellcheck="false">
+        <div class="hint" id="iban-hint">CZ+CZK = SPD · ostatní = EPC SEPA</div>
+        <button type="button" id="btnCalc" style="margin-top:6px;background:none;border:1px solid var(--blue);color:var(--blue);border-radius:4px;padding:3px 10px;font-size:.82rem;font-weight:600;cursor:pointer;">🧮 Dopočítat z čísla účtu</button>
+      </div>
+
+      <div class="fg">
+        <label for="bic">BIC / SWIFT <span style="color:#888;font-weight:400">(nepovinný)</span></label>
+        <input id="bic" type="text" placeholder="Např. CTASCZ22 nebo FEBIITM2XXX" maxlength="11" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="fg">
+        <label>Částka a měna</label>
+        <div style="display:flex;gap:.5rem">
+          <input id="amount" type="number" class="f-amt" placeholder="0.00" step="0.01" min="0.01">
+          <select id="currency" class="f-cur">
+            <option value="EUR" selected>EUR</option>
+            <option value="CZK">CZK</option>
+            <option value="USD">USD</option>
+            <option value="GBP">GBP</option>
+            <option value="CHF">CHF</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="spd-extra" class="hidden">
+        <div class="fg">
+          <label for="vs">Variabilní symbol</label>
+          <input id="vs" type="text" placeholder="Číslo faktury" maxlength="10" inputmode="numeric">
+        </div>
+        <div class="fg">
+          <label for="ks">Konstantní symbol</label>
+          <input id="ks" type="text" placeholder="0308" maxlength="4" inputmode="numeric">
+        </div>
+      </div>
+
+      <div class="fg">
+        <label for="msg">Zpráva pro příjemce</label>
+        <textarea id="msg" maxlength="140" placeholder="Volná zpráva nebo číslo faktury"></textarea>
+        <div class="hint" id="msgCnt">0 / 140 znaků</div>
+      </div>
+
+      <div class="btns">
+        <button type="submit" class="btn btn-p">Generovat QR kód</button>
+        <button type="reset"  class="btn btn-s">Vymazat</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── pravý sloupec ────────────────────────────────────────── -->
+  <div class="col-qr">
+    <div class="qr-panel">
+      <h2>Váš QR kód</h2>
+      <div id="qr-ph">Zde se zobrazí vygenerovaný QR kód.</div>
+      <div id="qr-wrap"></div>
+      <div id="qr-fmt"></div>
+      <button id="btn-dl" class="btn btn-s" onclick="dlQR()">⬇ Stáhnout PNG</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: přidat účet ══════════════════════════════════════════════════ -->
+<div id="modalAdd" class="overlay hidden">
+  <div class="modal">
+    <h2>Přidat nový účet</h2>
+    <form id="formAdd" novalidate>
+
+      <div class="fg">
+        <label for="m-name">Název účtu</label>
+        <input id="m-name" type="text" placeholder='Např. "Creditas CZK" nebo "Deutsche Bank ES"'>
+      </div>
+      <div class="fg">
+        <label for="m-ben">Jméno / název příjemce</label>
+        <input id="m-ben" type="text" placeholder="Jan Novák nebo Empresa S.L." maxlength="70">
+      </div>
+
+      <div class="fg">
+        <label>Typ zadání</label>
+        <div class="rg">
+          <label><input type="radio" name="m-type" id="m-type-cz" value="cz"> 🇨🇿 Číslo účtu (CZ)</label>
+          <label><input type="radio" name="m-type" id="m-type-iban" value="iban" checked> 🌍 IBAN</label>
+        </div>
+      </div>
+
+      <div id="m-cz-row" class="hidden">
+        <div class="fg">
+          <label>Číslo účtu</label>
+          <div class="row3">
+            <div class="fg f-pre">
+              <label style="font-size:.78rem;color:#555">Předčíslí</label>
+              <input id="m-pre" type="text" placeholder="000000" maxlength="6" inputmode="numeric">
+            </div>
+            <span class="sep">–</span>
+            <div class="fg f-num">
+              <label style="font-size:.78rem;color:#555">Číslo účtu *</label>
+              <input id="m-num" type="text" placeholder="1713736514" maxlength="10" inputmode="numeric">
+            </div>
+            <span class="sep">/</span>
+            <div class="fg f-bank">
+              <label style="font-size:.78rem;color:#555">Kód banky *</label>
+              <input id="m-bank" type="text" placeholder="0600" maxlength="4" inputmode="numeric">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="m-iban-row">
+        <div class="fg">
+          <label for="m-iban">IBAN</label>
+          <input id="m-iban" type="text" placeholder="ES12 3456 … nebo CZ65 0800 …" maxlength="34" spellcheck="false" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="fg">
+        <label for="m-bic">BIC / SWIFT (nepovinný)</label>
+        <input id="m-bic" type="text" placeholder="CTASCZ22 nebo DEUTESBBXXX" maxlength="11" spellcheck="false">
+      </div>
+
+      <div class="btns">
+        <button type="submit" class="btn btn-p">Uložit účet</button>
+        <button type="button" id="btnCancelAdd" class="btn btn-s">Zrušit</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ MODAL: IBAN kalkulátor ══════════════════════════════════════════════ -->
+<div id="modalCalc" class="overlay hidden">
+  <div class="modal">
+    <h2>🧮 Dopočet IBAN z čísla účtu</h2>
+    <p style="color:#555;font-size:.9rem;margin-bottom:1rem">
+      Zadejte české číslo účtu – IBAN se vypočítá a přenese do formuláře.
+    </p>
+    <div class="row3">
+      <div class="fg f-pre">
+        <label style="font-size:.78rem;color:#555">Předčíslí</label>
+        <input id="c-pre" type="text" placeholder="000000" maxlength="6" inputmode="numeric">
+      </div>
+      <span class="sep">–</span>
+      <div class="fg f-num">
+        <label style="font-size:.78rem;color:#555">Číslo účtu *</label>
+        <input id="c-num" type="text" placeholder="1713736514" maxlength="10" inputmode="numeric">
+      </div>
+      <span class="sep">/</span>
+      <div class="fg f-bank">
+        <label style="font-size:.78rem;color:#555">Kód banky *</label>
+        <input id="c-bank" type="text" placeholder="0600" maxlength="4" inputmode="numeric">
+      </div>
+    </div>
+    <div id="c-result" style="margin:.6rem 0;font-size:.9rem;min-height:1.4em"></div>
+    <div class="btns">
+      <button type="button" id="btnCalcOK" class="btn btn-p">Vypočítat a vložit IBAN</button>
+      <button type="button" id="btnCalcCancel" class="btn btn-s">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+const ACCS_KEY = 'qrAccounts_v4';
+const FORM_KEY = 'qrForm_v4';
+
+function getAccounts() {
+  try { return JSON.parse(localStorage.getItem(ACCS_KEY)) || defaultAccounts(); }
+  catch { return defaultAccounts(); }
+}
+function saveAccounts(a) { localStorage.setItem(ACCS_KEY, JSON.stringify(a)); }
+
+function defaultAccounts() {
+  return [
+    { name:'Banka Creditas (CZ)',      beneficiary:'Jan Novák',          iban:'CZ0222500000000102261391', bic:'CTASCZ22' },
+    { name:'Deutsche Bank Altea (ES)', beneficiary:'',                   iban:'',                        bic:'DEUTESBBXXX' },
+    { name:'FinecoBank (IT)',          beneficiary:'Rossi S.r.l.',       iban:'IT65G0301503200000005769965', bic:'FEBIITM2XXX' }
+  ];
+}
+
+function normalizeIban(s) { return s.replace(/\s+/g,'').toUpperCase(); }
+
+function validateIban(iban) {
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$/.test(iban)) return false;
+  const s = iban.slice(4) + iban.slice(0,4);
+  const n = s.replace(/[A-Z]/g, c => c.charCodeAt(0) - 55);
+  let r = 0;
+  for (const d of n) r = (r * 10 + parseInt(d)) % 97;
+  return r === 1;
+}
+
+function czAccountToIban(prefix, number, bankCode) {
+  // Validace
+  if (!/^\d{0,6}$/.test(prefix))   return { err: 'Předčíslí: max. 6 číslic.' };
+  if (!/^\d{1,10}$/.test(number))  return { err: 'Číslo účtu: 1–10 číslic.' };
+  if (!/^\d{4}$/.test(bankCode))   return { err: 'Kód banky: právě 4 číslice.' };
+  const bban = bankCode + prefix.padStart(6,'0') + number.padStart(10,'0');
+  let r = 0;
+  for (const d of (bban + '1235' + '00')) r = (r * 10 + parseInt(d)) % 97;
+  const iban = 'CZ' + String(98 - r).padStart(2,'0') + bban;
+  return { iban, formatted: iban.match(/.{1,4}/g).join(' ') };
+}
+
+// ── format indicator ─────────────────────────────────────────────────────────
+function getMode() {
+  const iban = normalizeIban($('iban').value);
+  return (iban.startsWith('CZ') && $('currency').value === 'CZK') ? 'spd' : 'epc';
+}
+
+function updateIndicator() {
+  const mode = getMode();
+  const fi = $('fi');
+  if (mode === 'spd') {
+    fi.className = 'fi fi-spd';
+    $('fi-icon').textContent = '🇨🇿';
+    $('fi-title').textContent = 'QR Platba – SPD (česká norma)';
+    $('fi-desc').textContent  = 'CZK · česká banka · SPD formát';
+    $('spd-extra').classList.remove('hidden');
+    $('msg').maxLength = 60;
+  } else {
+    fi.className = 'fi fi-epc';
+    $('fi-icon').textContent = '🇪🇺';
+    $('fi-title').textContent = 'EPC QR Code (SEPA)';
+    $('fi-desc').textContent  = 'EUR · IT, ES, DE a ostatní EU banky';
+    $('spd-extra').classList.add('hidden');
+    $('msg').maxLength = 140;
+  }
+  const lim = mode === 'spd' ? 60 : 140;
+  $('msgCnt').textContent = `${$('msg').value.length} / ${lim} znaků`;
+}
+
+// ── accounts dropdown ─────────────────────────────────────────────────────────
+function fillSelect() {
+  const sel = $('accSel');
+  sel.innerHTML = '';
+  getAccounts().forEach((a, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = a.name;
+    sel.appendChild(o);
+  });
+}
+
+function loadAccount(idx) {
+  const a = getAccounts()[idx];
+  if (!a) return;
+  $('beneficiary').value = a.beneficiary || '';
+  $('iban').value        = a.iban || '';
+  $('bic').value         = a.bic  || '';
+  updateIndicator();
+}
+
+$('accSel').addEventListener('change', () => loadAccount($('accSel').value));
+
+$('btnDel').addEventListener('click', () => {
+  const idx = +$('accSel').value;
+  const accs = getAccounts();
+  if (accs.length <= 1) { alert('Nelze odstranit poslední účet.'); return; }
+  if (!confirm(`Odstranit účet "${accs[idx].name}"?`)) return;
+  accs.splice(idx, 1);
+  saveAccounts(accs);
+  fillSelect();
+  loadAccount(0);
+});
+
+// ── modal: přidat účet ────────────────────────────────────────────────────────
+function openAdd() {
+  $('formAdd').reset();
+  // výchozí: IBAN tab
+  $('m-type-iban').checked = true;
+  $('m-cz-row').classList.add('hidden');
+  $('m-iban-row').classList.remove('hidden');
+  $('modalAdd').classList.remove('hidden');
+}
+function closeAdd() { $('modalAdd').classList.add('hidden'); }
+
+$('btnAdd').addEventListener('click', openAdd);
+$('btnCancelAdd').addEventListener('click', closeAdd);
+$('modalAdd').addEventListener('click', e => { if (e.target === $('modalAdd')) closeAdd(); });
+
+// přepínač CZ / IBAN v modálu
+document.querySelectorAll('input[name="m-type"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const cz = $('m-type-cz').checked;
+    $('m-cz-row').classList.toggle('hidden', !cz);
+    $('m-iban-row').classList.toggle('hidden', cz);
+  });
+});
+
+$('formAdd').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const name = $('m-name').value.trim();
+  const ben  = $('m-ben').value.trim();
+  if (!name) { alert('Vyplňte název účtu.'); return; }
+  if (!ben)  { alert('Vyplňte jméno příjemce.'); return; }
+
+  let finalIban = '';
+  const isCz = $('m-type-cz').checked;
+
+  if (isCz) {
+    const pre  = $('m-pre').value.trim();
+    const num  = $('m-num').value.trim();
+    const bank = $('m-bank').value.trim();
+    if (!num || !bank) { alert('Vyplňte číslo účtu a kód banky.'); return; }
+    const res = czAccountToIban(pre, num, bank);
+    if (res.err) { alert(res.err); return; }
+    finalIban = res.iban;
+  } else {
+    finalIban = normalizeIban($('m-iban').value);
+    if (!finalIban) { alert('Vyplňte IBAN.'); return; }
+    if (!validateIban(finalIban)) { alert(`IBAN "${finalIban}" není platný.`); return; }
+  }
+
+  const accs = getAccounts();
+  accs.push({ name, beneficiary: ben, iban: finalIban, bic: $('m-bic').value.trim().toUpperCase() });
+  saveAccounts(accs);
+  fillSelect();
+  $('accSel').value = accs.length - 1;
+  loadAccount(accs.length - 1);
+  closeAdd();
+});
+
+// ── modal: IBAN kalkulátor ───────────────────────────────────────────────────
+function openCalc() {
+  $('c-pre').value = ''; $('c-num').value = ''; $('c-bank').value = '';
+  $('c-result').textContent = '';
+  $('modalCalc').classList.remove('hidden');
+  setTimeout(() => $('c-num').focus(), 50);
+}
+function closeCalc() { $('modalCalc').classList.add('hidden'); }
+
+$('btnCalc').addEventListener('click', openCalc);
+$('btnCalcCancel').addEventListener('click', closeCalc);
+$('modalCalc').addEventListener('click', e => { if (e.target === $('modalCalc')) closeCalc(); });
+
+// živý náhled při psaní v kalkulátoru
+['c-pre','c-num','c-bank'].forEach(id => {
+  $(id).addEventListener('input', () => {
+    const pre = $('c-pre').value.trim(), num = $('c-num').value.trim(), bank = $('c-bank').value.trim();
+    if (num.length >= 1 && bank.length === 4) {
+      const res = czAccountToIban(pre, num, bank);
+      $('c-result').style.color = res.err ? '#c0392b' : '#2d7a2d';
+      $('c-result').textContent  = res.err ? '⚠ ' + res.err : '→ ' + res.formatted;
+    } else {
+      $('c-result').textContent = '';
+    }
+  });
+});
+
+$('btnCalcOK').addEventListener('click', () => {
+  const pre = $('c-pre').value.trim(), num = $('c-num').value.trim(), bank = $('c-bank').value.trim();
+  if (!num || !bank) { alert('Vyplňte číslo účtu a kód banky.'); return; }
+  const res = czAccountToIban(pre, num, bank);
+  if (res.err) { alert(res.err); return; }
+  $('iban').value = res.formatted;
+  updateIndicator();
+  closeCalc();
+});
+
+$('c-bank').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnCalcOK').click(); });
+
+// Auto-konverze přímo v IBAN poli (blur / Enter)
+function tryConvertIban() {
+  const v = $('iban').value.trim();
+  const m = v.match(/^(?:(\d{1,6})-)?(\d{1,10})\/(\d{4})$/);
+  if (!m) return;
+  const res = czAccountToIban(m[1] || '', m[2], m[3]);
+  if (res.err) return;
+  $('iban').value = res.formatted;
+  const h = $('iban-hint');
+  h.style.color = '#2d7a2d';
+  h.textContent = `✔ Převedeno: ${v} → ${res.formatted}`;
+  setTimeout(() => { h.style.color = ''; h.textContent = 'CZ+CZK = SPD · ostatní = EPC SEPA'; }, 4000);
+  updateIndicator();
+}
+$('iban').addEventListener('blur',   tryConvertIban);
+$('iban').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tryConvertIban(); } });
+$('iban').addEventListener('input',  updateIndicator);
+$('currency').addEventListener('change', updateIndicator);
+
+// ── form persistence ──────────────────────────────────────────────────────────
+$('msg').addEventListener('input', () => {
+  const lim = getMode() === 'spd' ? 60 : 140;
+  $('msgCnt').textContent = `${$('msg').value.length} / ${lim} znaků`;
+});
+
+function saveForm() {
+  localStorage.setItem(FORM_KEY, JSON.stringify({
+    amount: $('amount').value, currency: $('currency').value,
+    msg: $('msg').value, vs: $('vs').value, ks: $('ks').value
+  }));
+}
+function loadForm() {
+  const s = JSON.parse(localStorage.getItem(FORM_KEY) || '{}');
+  $('amount').value   = s.amount   || '1';
+  $('currency').value = s.currency || 'EUR';
+  $('msg').value      = s.msg      || '';
+  $('vs').value       = s.vs       || '';
+  $('ks').value       = s.ks       || '';
+}
+$('mainForm').addEventListener('input', saveForm);
+
+// ── QR generování ─────────────────────────────────────────────────────────────
+function buildSPD(iban, bic, amount, currency, msg, vs, ks) {
+  let s = 'SPD*1.0*ACC:' + iban;
+  if (bic) s += '+' + bic;
+  s += '*';
+  if (amount) s += 'AM:' + parseFloat(amount).toFixed(2) + '*';
+  s += 'CC:' + currency + '*';
+  if (vs)  s += 'X-VS:' + vs + '*';
+  if (ks)  s += 'X-KS:' + ks + '*';
+  if (msg) s += 'MSG:' + msg.substring(0,60) + '*';
+  return s.replace(/\*$/, '');
+}
+
+function buildEPC(beneficiary, iban, bic, amount, currency, msg) {
+  return ['BCD','002','1','SCT', bic||'', beneficiary, iban,
+    amount ? currency + parseFloat(amount).toFixed(2) : '', '', '', msg||''].join('\n');
+}
+
+function generateQR() {
+  const ben    = $('beneficiary').value.trim();
+  const ibanRaw= $('iban').value.trim();
+  const bic    = $('bic').value.trim().toUpperCase();
+  const amount = $('amount').value;
+  const cur    = $('currency').value;
+  const msg    = $('msg').value.trim();
+  const vs     = $('vs').value.trim();
+  const ks     = $('ks').value.trim();
+
+  if (!ben || !ibanRaw) { alert('Vyplňte jméno příjemce a IBAN.'); return; }
+  const iban = normalizeIban(ibanRaw);
+  if (!validateIban(iban)) { alert(`IBAN "${iban}" není platný.`); return; }
+
+  const mode    = getMode();
+  const payload = mode === 'spd'
+    ? buildSPD(iban, bic, amount, cur, msg, vs, ks)
+    : buildEPC(ben, iban, bic, amount, cur, msg);
+
+  const wrap = $('qr-wrap');
+  wrap.innerHTML = '';
+  new QRCode(wrap, { text: payload, width:300, height:300,
+    colorDark:'#000', colorLight:'#fff', correctLevel: QRCode.CorrectLevel.M });
+
+  $('qr-ph').style.display  = 'none';
+  wrap.style.display        = 'flex';
+  $('btn-dl').style.display = 'inline-block';
+  $('qr-fmt').textContent   = mode === 'spd'
+    ? '🇨🇿 Formát: SPD – QR Platba (česká norma)'
+    : '🇪🇺 Formát: EPC QR Code v002 (SEPA)';
+}
+
+window.dlQR = function() {
+  const c = $('qr-wrap').querySelector('canvas');
+  if (!c) return;
+  const a = document.createElement('a');
+  a.download = getMode() === 'spd' ? 'qr-platba-czk.png' : 'qr-platba-sepa.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+};
+
+$('mainForm').addEventListener('submit', e => { e.preventDefault(); generateQR(); });
+$('mainForm').addEventListener('reset', () => {
+  localStorage.removeItem(FORM_KEY);
+  setTimeout(() => {
+    loadAccount(0);
+    $('amount').value = '1'; $('currency').value = 'EUR';
+    $('msg').value = ''; $('vs').value = ''; $('ks').value = '';
+    $('qr-wrap').innerHTML = '';
+    $('qr-wrap').style.display = 'none';
+    $('qr-ph').style.display = 'flex';
+    $('btn-dl').style.display = 'none';
+    $('qr-fmt').textContent = '';
+    updateIndicator();
+  }, 0);
+});
+
+// ── init ──────────────────────────────────────────────────────────────────────
+fillSelect();
+loadAccount(0);
+loadForm();
+updateIndicator();
+</script>
+<!-- ══ PWA install banner ═══════════════════════════════════════════════════ -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);
+  z-index:999;background:#1a1a2e;color:#fff;border-radius:12px;padding:14px 18px;
+  max-width:380px;width:calc(100% - 2rem);box-shadow:0 4px 20px rgba(0,0,0,.4);
+  display:none;align-items:center;gap:12px;">
+  <span style="font-size:2rem;flex-shrink:0">📲</span>
+  <div style="flex:1;font-size:.88rem;line-height:1.4">
+    <strong style="display:block;font-size:.95rem;margin-bottom:2px">Nainstalovat jako appku</strong>
+    Přidat na plochu pro rychlý přístup offline
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button id="pwa-install" style="background:#1874cd;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:.85rem;font-weight:700;cursor:pointer">Instalovat</button>
+    <button id="pwa-dismiss" style="background:transparent;color:#aaa;border:1px solid #555;border-radius:6px;padding:7px 10px;font-size:.85rem;cursor:pointer">✕</button>
+  </div>
+</div>
+
+<div id="ios-hint" style="display:none;position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);
+  z-index:999;background:#1a1a2e;color:#fff;border-radius:12px;padding:14px 18px;
+  max-width:340px;width:calc(100% - 2rem);box-shadow:0 4px 20px rgba(0,0,0,.4);
+  font-size:.88rem;line-height:1.5;text-align:center">
+  📲 Nainstalovat na iPhone/iPad:<br>
+  Klepněte na <strong>⬆ Sdílet</strong> → <strong>Přidat na plochu</strong>
+  <br><button onclick="document.getElementById('ios-hint').style.display='none'"
+    style="margin-top:10px;background:none;border:1px solid #aaa;color:#aaa;border-radius:6px;padding:4px 14px;cursor:pointer;font-size:.82rem">Zavřít</button>
+</div>
+
+<script>
+// ── PWA: generování ikony (canvas) ───────────────────────────────────────────
+function makeIcon(sz) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = sz;
+  const ctx = cv.getContext('2d');
+  // zaoblený čtverec
+  const r = sz * 0.18;
+  ctx.fillStyle = '#1874cd';
+  ctx.beginPath();
+  ctx.moveTo(r,0); ctx.lineTo(sz-r,0); ctx.quadraticCurveTo(sz,0,sz,r);
+  ctx.lineTo(sz,sz-r); ctx.quadraticCurveTo(sz,sz,sz-r,sz);
+  ctx.lineTo(r,sz); ctx.quadraticCurveTo(0,sz,0,sz-r);
+  ctx.lineTo(0,r); ctx.quadraticCurveTo(0,0,r,0); ctx.closePath(); ctx.fill();
+  // QR piktogram
+  ctx.fillStyle = '#fff';
+  const cell = sz/10, off = sz*0.14;
+  [[1,1,1,0,1,1,1],[1,0,1,0,1,0,1],[1,1,1,0,1,1,1],
+   [0,0,0,0,0,0,0],[1,1,1,0,1,1,1],[1,0,1,0,1,0,1],[1,1,1,0,1,1,1]]
+  .forEach((row,y) => row.forEach((on,x) => {
+    if (on) ctx.fillRect(off+x*cell, off+y*cell, cell*.85, cell*.85);
+  }));
+  // euro symbol
+  ctx.fillStyle = 'rgba(255,255,255,.25)';
+  ctx.font = `bold ${sz*.34}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('€', sz*.72, sz*.76);
+  return cv.toDataURL('image/png');
+}
+
+// ── PWA: manifest + service worker ──────────────────────────────────────────
+(function setupPWA() {
+  const icon192 = makeIcon(192);
+  const icon512 = makeIcon(512);
+  document.getElementById('apple-icon').href = makeIcon(180);
+
+  // Manifest
+  const manifest = {
+    name: 'QR Platba – SPD / EPC',
+    short_name: 'QR Platba',
+    description: 'Generátor QR platebních kódů pro české a evropské banky',
+    start_url: location.href,
+    display: 'standalone',
+    background_color: '#f4f7f9',
+    theme_color: '#1874cd',
+    lang: 'cs',
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const mBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(mBlob);
+
+  // Service Worker – cache celého souboru
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+const CACHE = 'qr-platba-v4';
+const QRJS  = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll([location.href, QRJS])).catch(()=>{}));
+  self.skipWaiting();
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch', e => {
+  e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+    if (res && res.status === 200) {
+      const cl = res.clone();
+      caches.open(CACHE).then(c => c.put(e.request, cl));
+    }
+    return res;
+  }).catch(() => caches.match(e.request))));
+});`;
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl  = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+
+  // Install prompt – Android
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!localStorage.getItem('pwa-dismissed')) {
+      const b = document.getElementById('pwa-banner');
+      b.style.display = 'flex';
+    }
+  });
+  document.getElementById('pwa-install').addEventListener('click', () => {
+    document.getElementById('pwa-banner').style.display = 'none';
+    if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+  });
+  document.getElementById('pwa-dismiss').addEventListener('click', () => {
+    document.getElementById('pwa-banner').style.display = 'none';
+    localStorage.setItem('pwa-dismissed', '1');
+  });
+
+  // iOS hint
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  if (isIos && !isStandalone && !localStorage.getItem('ios-hint-dismissed')) {
+    setTimeout(() => { document.getElementById('ios-hint').style.display = 'block'; }, 2500);
+  }
+})();
+</script>
+
+</body>
+</html>
