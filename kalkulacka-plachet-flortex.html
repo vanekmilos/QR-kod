@@ -686,7 +686,7 @@
     </div>
 
     <div class="version-footer">
-        <span data-t="formVersion">Verze formuláře</span>: 1.52
+        <span data-t="formVersion">Verze formuláře</span>: 1.53
     </div>
 </div>
 
@@ -1540,6 +1540,7 @@
         saveTarps() {
             try { localStorage.setItem(this.TARPS_KEY, JSON.stringify(this.DOSTUPNE_PLACHTY.map(p => ({ w: p.w, l: p.l, kg: p.kg })))); } catch (e) {}
             this.renderTarpTable();
+            this.syncPrefLengths();
             this.saveConfig();
         },
 
@@ -1600,17 +1601,45 @@
             return Array.from(document.querySelectorAll('#prefLengthsChecklist input')).some(i => Math.abs(parseFloat(i.value) - v) < 0.01);
         },
 
-        addCustomLengthCheckbox(v, checked = true) {
-            if (isNaN(v) || this.prefValueExists(v)) return;
+        buildPrefCheckbox(v, checked, isCustom) {
             const label = document.createElement('label');
             label.className = 'check-item';
             const input = document.createElement('input');
-            input.type = 'checkbox'; input.value = String(v); input.checked = checked; input.dataset.custom = '1';
-            const del = document.createElement('button');
-            del.type = 'button'; del.className = 'check-item-remove'; del.textContent = '✕';
-            del.onclick = (e) => { e.preventDefault(); e.stopPropagation(); label.remove(); this.saveConfig(); };
-            label.append(input, document.createTextNode(` ${v.toFixed(2)} m `), del);
+            input.type = 'checkbox'; input.value = String(v); input.checked = checked;
+            if (isCustom) input.dataset.custom = '1';
+            label.append(input, document.createTextNode(` ${v.toFixed(2)} m `));
+            if (isCustom) {
+                const del = document.createElement('button');
+                del.type = 'button'; del.className = 'check-item-remove'; del.textContent = '✕';
+                del.onclick = (e) => { e.preventDefault(); e.stopPropagation(); label.remove(); this.saveConfig(); };
+                label.appendChild(del);
+            }
             document.getElementById('prefLengthsChecklist').appendChild(label);
+        },
+
+        // Checklist preferovaných délek drží krok s katalogem: každá délka z katalogu má svůj
+        // checkbox (nově přidané zaškrtnuté), vlastní délky mimo katalog zůstávají zachované
+        syncPrefLengths() {
+            const list = document.getElementById('prefLengthsChecklist');
+            const prevChecked = {};
+            const customs = [];
+            list.querySelectorAll('input').forEach(i => {
+                const v = Math.round(parseFloat(i.value) * 100) / 100;
+                if (isNaN(v)) return;
+                prevChecked[v] = i.checked;
+                if (i.dataset.custom) customs.push(v);
+            });
+            const catalogLens = Array.from(new Set(this.DOSTUPNE_PLACHTY.map(p => Math.round(p.l * 100) / 100)));
+            list.innerHTML = '';
+            Array.from(new Set([...catalogLens, ...customs])).sort((a, b) => a - b).forEach(v => {
+                const isCustom = customs.includes(v) && !catalogLens.includes(v);
+                this.buildPrefCheckbox(v, prevChecked[v] !== undefined ? prevChecked[v] : true, isCustom);
+            });
+        },
+
+        addCustomLengthCheckbox(v, checked = true) {
+            if (isNaN(v) || this.prefValueExists(v)) return;
+            this.buildPrefCheckbox(v, checked, true);
         },
 
         addCustomLength() {
@@ -1763,6 +1792,9 @@
             if (statusEl) statusEl.style.display = 'inline';
             const prefs = [];
             document.querySelectorAll('#prefLengthsChecklist input:checked').forEach(i => prefs.push(i.value));
+            // checklist se generuje z katalogu, proto se persistují vyloučené délky – nová délka v katalogu má být implicitně zaškrtnutá
+            const excl = [];
+            document.querySelectorAll('#prefLengthsChecklist input:not(:checked)').forEach(i => excl.push(i.value));
             const config = {
                 baleType: this.BALE_TYPE,
                 round_size: document.getElementById('bale_size_round').value,
@@ -1775,6 +1807,7 @@
                 base_sq: document.getElementById('base_width_square').value,
                 cover: document.getElementById('cover_method').value,
                 prefLengths: prefs,
+                exclLengths: excl,
                 customLengths: Array.from(document.querySelectorAll('#prefLengthsChecklist input[data-custom]')).map(i => i.value),
                 tarps: this.DOSTUPNE_PLACHTY.map(p => ({ w: p.w, l: p.l, kg: p.kg })),
                 lang: this.lang
@@ -1813,7 +1846,16 @@
                         }
                     }
                     if (d.customLengths) d.customLengths.forEach(v => this.addCustomLengthCheckbox(parseFloat(v), false));
-                    if (d.prefLengths) document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = d.prefLengths.includes(input.value));
+                    this.syncPrefLengths();
+                    if (Array.isArray(d.exclLengths)) {
+                        document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = !d.exclLengths.includes(input.value));
+                    } else if (Array.isArray(d.prefLengths)) {
+                        // starší konfigurace znala jen výchozí čtveřici délek + vlastní délky; ostatní (nové katalogové) nechat zaškrtnuté
+                        const known = new Set(['12.5', '15', '17.5', '25', ...(d.customLengths || []).map(String)]);
+                        document.querySelectorAll('#prefLengthsChecklist input').forEach(input => {
+                            if (known.has(input.value)) input.checked = d.prefLengths.includes(input.value);
+                        });
+                    }
                     document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.value === this.BALE_TYPE));
                     document.getElementById('bale_dims_round').style.display = this.BALE_TYPE === 'round' ? 'grid' : 'none';
                     document.getElementById('bale_dims_square').style.display = this.BALE_TYPE === 'square' ? 'block' : 'none';
@@ -1846,6 +1888,7 @@
         init() {
             this.DOSTUPNE_PLACHTY = this.loadTarps();
             this.renderTarpTable();
+            this.syncPrefLengths();
             document.getElementById('calculateButton').onclick = () => { this.vypocitat(); this.saveConfig(); if(this.wizard.active) this.wizard.stop(); };
             document.getElementById('resetButton').onclick = () => { this.resetForm(); };
             document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(btn => {
