@@ -686,7 +686,7 @@
     </div>
 
     <div class="version-footer">
-        <span data-t="formVersion">Verze formuláře</span>: 1.51
+        <span data-t="formVersion">Verze formuláře</span>: 1.52
     </div>
 </div>
 
@@ -722,6 +722,7 @@
         lang: 'cs',
         BALE_TYPE: 'round',
         TARPS_KEY: 'flortexTarps_v1',
+        JOINT_OVERLAP: 0.2, // překrytí plachet na každém spoji při zřetězení (m)
         DEFAULT_PLACHTY: [
             { w: 6.15, l: 12.5, kg: 12.30 },
             { w: 6.15, l: 25.0, kg: 24.60 },
@@ -786,7 +787,7 @@
                 itemSurplus: "Máte přebytek {val} m.",
                 tipComment: "Doporučení k zakrytí:",
                 tipSurplusUsage: "Tento přebytek můžete využít k zakrytí obou čel stohu. Případně můžete stoh navýšit o {n} balíků.",
-                tipVelcro: "Vzhledem k délce stohu doporučujeme spojit {n} plachty pomocí **suchého zipu**.",
+                tipVelcro: "Vzhledem k délce stohu doporučujeme spojit {n} plachty pomocí **suchého zipu**. Výpočet již počítá s překrytím 0,2 m na každém spoji.",
                 genTips: "Série rad pro správné zakrytí:",
                 tipAnchor: "⚓ Plachtu důkladně ukotvěte proti větru.",
                 tipSlope: "📐 Stoh stavte na mírně vyvýšeném místě.",
@@ -909,7 +910,7 @@
                 itemSurplus: "Máte prebytok {val} m.",
                 tipComment: "Odporúčanie k zakrytiu:",
                 tipSurplusUsage: "Tento prebytok využite na čelá alebo o {n} balíkov viac.",
-                tipVelcro: "Odporúčame spojiť {n} plachty suchým zipsom.",
+                tipVelcro: "Odporúčame spojiť {n} plachty suchým zipsom. Výpočet už počíta s prekrytím 0,2 m na každom spoji.",
                 genTips: "Tipy pre zakrytie:",
                 tipAnchor: "⚓ Plachtu ukotvite proti vetru.",
                 tipSlope: "📐 Stoh stavajte na vyvýšenom mieste.",
@@ -1032,7 +1033,7 @@
                 itemSurplus: "Surplus of {val} m.",
                 tipComment: "Covering recommendation:",
                 tipSurplusUsage: "Use surplus for the ends or add {n} more bales.",
-                tipVelcro: "We recommend joining {n} tarps with Velcro.",
+                tipVelcro: "We recommend joining {n} tarps with Velcro. The calculation already includes a 0.2 m overlap at every joint.",
                 genTips: "Tips for proper covering:",
                 tipAnchor: "⚓ Anchor properly against wind.",
                 tipSlope: "📐 Build on elevated ground.",
@@ -1155,7 +1156,7 @@
                 itemSurplus: "Surplus di {val} m.",
                 tipComment: "Consigli per la copertura:",
                 tipSurplusUsage: "Usa il surplus per i fronti o aggiungi {n} balle.",
-                tipVelcro: "Consigliamo di unire {n} teli con il Velcro.",
+                tipVelcro: "Consigliamo di unire {n} teli con il Velcro. Il calcolo include già una sovrapposizione di 0,2 m per ogni giunzione.",
                 genTips: "Consigli per la corretta copertura:",
                 tipAnchor: "⚓ Ancorare bene contro il vento.",
                 tipSlope: "📐 Costruire su terreno sopraelevato.",
@@ -1278,7 +1279,7 @@
                 itemSurplus: "Nadmiar {val} m.",
                 tipComment: "Zalecenia dotyczące przykrycia:",
                 tipSurplusUsage: "Nadmiar wykorzystaj na czoła lub dodaj {n} bel.",
-                tipVelcro: "Zalecamy połączenie {n} plandek rzepami.",
+                tipVelcro: "Zalecamy połączenie {n} plandek rzepami. Obliczenie uwzględnia już zakładkę 0,2 m na każdym łączeniu.",
                 genTips: "Zasady prawidłowego przykrycia:",
                 tipAnchor: "⚓ Dobrze zakotwicz przed wiatrem.",
                 tipSlope: "📐 Buduj na wzniesieniu.",
@@ -1401,7 +1402,7 @@
                 itemSurplus: "Exceso de {val} m.",
                 tipComment: "Recomendación de cobertura:",
                 tipSurplusUsage: "Usa el exceso para los extremos o añade {n} pacas.",
-                tipVelcro: "Recomendamos unir {n} lonas con Velcro.",
+                tipVelcro: "Recomendamos unir {n} lonas con Velcro. El cálculo ya incluye un solape de 0,2 m en cada unión.",
                 genTips: "Consejos para cobertura correcta:",
                 tipAnchor: "⚓ Ancla bien contra el viento.",
                 tipSlope: "📐 Construye en terreno elevado.",
@@ -1898,9 +1899,13 @@
                         if (missing < minMissing - 0.01) { minMissing = missing; bestUnder = [...currentCombo]; }
                         else if (Math.abs(missing - minMissing) < 0.01) if (!bestUnder || currentCombo.length < bestUnder.length) bestUnder = [...currentCombo];
                     }
-                    if (currentCombo.length >= 20) return; 
+                    if (currentCombo.length >= 20) return;
                     for (let l of available) {
-                        currentCombo.push(l); search(currentCombo, currentLen + l); currentCombo.pop();
+                        currentCombo.push(l);
+                        // od druhého kusu se na spoji ztrácí JOINT_OVERLAP metrů krycí délky
+                        const eff = l - (currentCombo.length > 1 ? this.JOINT_OVERLAP : 0);
+                        search(currentCombo, currentLen + eff);
+                        currentCombo.pop();
                         if (minSurplus <= 0.5) break;
                     }
                 }
@@ -2004,16 +2009,18 @@
             const container = document.getElementById('tarp_suggestions'); container.innerHTML = '';
             const box = document.createElement('div'); box.className = 'best-fit-box';
             const totalAvailL = bestOption.combo.reduce((a,b)=>a+b, 0);
+            // skutečná krycí délka = materiál minus překrytí na spojích
+            const coverL = totalAvailL - this.JOINT_OVERLAP * Math.max(0, bestOption.combo.length - 1);
             // kapacita v řadách jen z délky využitelné pro stoh – bez přesahu na čela a fixační rezervy
-            const usableForRowsL = Math.max(0, totalAvailL - (targetL - stackL));
+            const usableForRowsL = Math.max(0, coverL - (targetL - stackL));
             const rowsUnderTotal = Math.floor(usableForRowsL / bL);
-            const surplusTotal = totalAvailL - targetL;
+            const surplusTotal = coverL - targetL;
             const tarpCapacity = rowsUnderTotal * crossSum;
             const diff = tarpCapacity - totalInput;
             let diffHtml = diff > 0 ? ` <span style="color: #e53e3e; font-weight: 700;">(+${diff} ks - ${this.getText('capUnused')})</span>` : (diff < 0 ? ` <span style="color: #e53e3e; font-weight: 700;">(${diff} ks - ${this.getText('capMissing')})</span>` : "");
             let wasteWarning = "", costOptWarning = "", economicalWarning = "", shortageWarning = "";
             if (surplusTotal < 0) {
-                let actualMissingL = targetL - 0.50 - totalAvailL;
+                let actualMissingL = targetL - 0.50 - coverL;
                 if (actualMissingL > 0) shortageWarning = `<div class="waste-warning-box" style="border-color: #3182ce; background-color: #ebf8ff; color: #2b6cb0; margin-bottom: 15px;">${this.getText('tipShortage').replace('{n}', Math.abs(diff))}</div>`;
             } else {
                 if (surplusTotal >= 2.5) {
@@ -2045,7 +2052,7 @@
                     const smallestTarp = sortedCombo[0];
                     if (surplusTotal > (smallestTarp * 0.30)) {
                         const reducedCombo = [...bestOption.combo]; reducedCombo.splice(reducedCombo.indexOf(smallestTarp), 1);
-                        const reducedLen = reducedCombo.reduce((a,b)=>a+b, 0);
+                        const reducedLen = reducedCombo.reduce((a,b)=>a+b, 0) - this.JOINT_OVERLAP * Math.max(0, reducedCombo.length - 1);
                         const counts = {}; reducedCombo.forEach(l => counts[l] = (counts[l] || 0) + 1);
                         const parts = Object.entries(counts).map(([l, count]) => {
                             return `${count}ks × ${this.tarpName(bestOption.width, parseFloat(l))}`;
