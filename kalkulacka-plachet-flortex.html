@@ -491,12 +491,12 @@
 <div class="container">
     <div class="header-controls">
         <div class="lang-switcher">
-            <div class="lang-btn active" onclick="app.setLang('cs')" title="Čeština">🇨🇿</div>
-            <div class="lang-btn" onclick="app.setLang('sk')" title="Slovenčina">🇸🇰</div>
-            <div class="lang-btn" onclick="app.setLang('en')" title="English">🇬🇧</div>
-            <div class="lang-btn" onclick="app.setLang('it')" title="Italiano">🇮🇹</div>
-            <div class="lang-btn" onclick="app.setLang('pl')" title="Polski">🇵🇱</div>
-            <div class="lang-btn" onclick="app.setLang('es')" title="Español">🇪🇸</div>
+            <div class="lang-btn active" data-lang="cs" onclick="app.setLang('cs')" title="Čeština">🇨🇿</div>
+            <div class="lang-btn" data-lang="sk" onclick="app.setLang('sk')" title="Slovenčina">🇸🇰</div>
+            <div class="lang-btn" data-lang="en" onclick="app.setLang('en')" title="English">🇬🇧</div>
+            <div class="lang-btn" data-lang="it" onclick="app.setLang('it')" title="Italiano">🇮🇹</div>
+            <div class="lang-btn" data-lang="pl" onclick="app.setLang('pl')" title="Polski">🇵🇱</div>
+            <div class="lang-btn" data-lang="es" onclick="app.setLang('es')" title="Español">🇪🇸</div>
         </div>
         <div class="nav-buttons">
             <button class="wizard-btn" onclick="app.wizard.start()">
@@ -607,7 +607,7 @@
 
     <div class="form-group" id="fg_total">
         <label><span data-t="labelTotal">Počet balíků celkem (ks)</span></label>
-        <input type="number" id="total_bales" placeholder="Zadejte celkový počet balíků">
+        <input type="number" id="total_bales" min="1" max="10000" placeholder="Zadejte celkový počet balíků">
     </div>
 
     <div class="form-group" id="fg_config">
@@ -682,15 +682,32 @@
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
     let fbConfig = null;
     try { if (typeof __firebase_config !== 'undefined' && __firebase_config) fbConfig = JSON.parse(__firebase_config); } catch (e) {}
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    let db = null, auth = null, currentUser = null;
-    if (fbConfig) { const app_fb = initializeApp(fbConfig); auth = getAuth(app_fb); db = getFirestore(app_fb); }
+    let db = null, auth = null, currentUser = null, fb = null;
+
+    // Firebase se načítá dynamicky – při výpadku CDN musí kalkulačka dál fungovat (jen bez ukládání)
+    async function initFirebase() {
+        if (!fbConfig) return;
+        try {
+            const base = "https://www.gstatic.com/firebasejs/11.6.1/";
+            const [appMod, authMod, fsMod] = await Promise.all([
+                import(base + "firebase-app.js"),
+                import(base + "firebase-auth.js"),
+                import(base + "firebase-firestore.js")
+            ]);
+            fb = { doc: fsMod.doc, setDoc: fsMod.setDoc, getDoc: fsMod.getDoc };
+            const app_fb = appMod.initializeApp(fbConfig);
+            auth = authMod.getAuth(app_fb);
+            db = fsMod.getFirestore(app_fb);
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await authMod.signInWithCustomToken(auth, __initial_auth_token);
+                else await authMod.signInAnonymously(auth);
+            } catch (e) { console.warn('Firebase auth failed:', e); }
+            authMod.onAuthStateChanged(auth, (user) => { if (user) { currentUser = user; window.app.loadConfig(); } });
+        } catch (e) { console.warn('Firebase unavailable, settings will not be persisted:', e); }
+    }
 
     window.app = {
         lang: 'cs',
@@ -784,18 +801,19 @@
                 optSelect: "Vyberte požadovanou hodnotu",
                 errMissingSelect: "Vyberte požadovanou hodnotu ze seznamu.",
                 errInvalidNum: "Zadejte platné číselné hodnoty do všech polí.",
+                errTooManyBales: "Maximální podporovaný počet balíků je 10 000.",
                 phTotalBales: "Zadejte celkový počet balíků",
-                tipCostOptEnds: "💡 **Optimalizace nákladov:** Další plachta by byla z velké části nevyužita. Pokud zakoupíte pouze **{tarps}**, ušetříte, ale nezbude vám dostatečná délka pro plné zakrytí čel stohu.",
+                tipCostOptEnds: "💡 **Optimalizace nákladů:** Další plachta by byla z velké části nevyužita. Pokud zakoupíte pouze **{tarps}**, ušetříte, ale nezbude vám dostatečná délka pro plné zakrytí čel stohu.",
                 tipCostOptBales: "💡 **Optimalizace nákladů:** Další plachta by byla z velké části nevyužita. Pokud zakoupíte pouze **{tarps}**, ušetříte, ale **{n} balíků zůstane nezakryto**.",
                 tipUneconomical: "💡 **Neekonomický přesah:** Plachta má velký přebytek ({surplus} m). Pokud ze stohu odeberete **{bales} balíků** ({rows} do délky), zkrátí se tak, že vám bude stačit výrazně menší plachta ({smallerL} m). Ušetříte tím zbytečný nákup {saved} m plachty!",
-                tipShortage: "💡 **Ekonomická volba:** Abychom se vyhnuli zbytečně velké plachtě, navrhujeme nejbližší menší rozměr. Upozoržujeme ale, že **{n} balíků zůstane nezakryto**.",
+                tipShortage: "💡 **Ekonomická volba:** Abychom se vyhnuli zbytečně velké plachtě, navrhujeme nejbližší menší rozměr. Upozorňujeme ale, že **{n} balíků zůstane nezakryto**.",
                 capUnused: "nevyužitá kapacita",
                 capMissing: "nezakryto",
                 btnPrint: "Vytisknout výsledky",
                 manTitle: "Komplexní manuál a metodika výpočtu",
                 manContent: `<div class='manual-intro'>Tato kalkulačka Vám pomůže najít ideální rozměr a kombinaci plachet Flortex pro Váš stoh. Cílem je minimalizovat odpad, snížit pořizovací náklady a zajistit maximální ochranu úrody.</div>
                 <h4>1. Specifikace balíků</h4>
-                <p>Vyberte tvar (kulaté/hranaté) a zadejte přesné rozměry. Měřte reálné balíky z pole, nespoléheyte se jen na teoretické hodnoty lisu, protože balíky po slehnutí mohou měnit tvar. U kulatých balíků je klíčový vnější průměr a šířka (tzv. návin).</p>
+                <p>Vyberte tvar (kulaté/hranaté) a zadejte přesné rozměry. Měřte reálné balíky z pole, nespoléhejte se jen na teoretické hodnoty lisu, protože balíky po slehnutí mohou měnit tvar. U kulatých balíků je klíčový vnější průměr a šířka (tzv. návin).</p>
                 <h4>2. Konfigurace a stavba stohu</h4>
                 <p>Zadejte celkový počet balíků, které chcete uskladnit. Následně vyberte, do jaké pyramidy je budete skládat (např. 4-3-2-1 znamená 4 balíky v základně, 3 ve druhém patře atd.). Kalkulačka na pozadí vypočítá celkovou délku stohu, šířku základny a potřebnou délku obepnutí plachty (včetně fixačních rezerv).</p>
                 <h4>3. Způsob zakrytí</h4>
@@ -809,13 +827,13 @@
                 <h4>5. Inteligentní varování (Jak ušetřit)</h4>
                 <p>Kalkulačka nepočítá jen matematicky, ale myslí i ekonomicky. Pokud narazí na neefektivní využití materiálu, zobrazí Vám varování:</p>
                 <ul>
-                    <li>🔴 <strong>Červené varování (Neekonomický přesah):</strong> Zobrazí se, pokud by Vám na konci stohu zbývalo zbytečně mnoho plachty (např. 6 metrů navíc). Systém Vám v tomto případě přesně doporučí: <em>"Odeberte X balíků, stoh se zkrátí a bude Vám stačit o třídu menší plachta."</em> Ušetříte tak penieze za nevyužitý materiál.</li>
+                    <li>🔴 <strong>Červené varování (Neekonomický přesah):</strong> Zobrazí se, pokud by Vám na konci stohu zbývalo zbytečně mnoho plachty (např. 6 metrů navíc). Systém Vám v tomto případě přesně doporučí: <em>"Odeberte X balíků, stoh se zkrátí a bude Vám stačit o třídu menší plachta."</em> Ušetříte tak peníze za nevyužitý materiál.</li>
                     <li>🔵 <strong>Modré varování (Ekonomická volba):</strong> Někdy se naopak nevyplatí kupovat další velkou plachtu jen kvůli posledním 2-3 balíkům na konci stohu. Systém Vám navrhne koupit menší plachtu a upozorní Vás, kolik balíků sice zůstane nezakrytých, ale Vy ušetříte tisíce korun za zbytečnou plachtu.</li>
                 </ul>
                 <h4>6. Zootechnické a agronomické zásady</h4>
                 <ul>
                     <li><strong>Zabraňte vzlínání vlhkosti:</strong> Vždy stoh podložte paletami, silnými větvemi nebo hrubým štěrkem. Vlhkost od země je největším nepřítelem skladování.</li>
-                    <li><strong>Větrání (Komínový efekt):</strong> Plachta Flortex je prodyšná, ale stoh musí dýchat. Plachta se proto <strong>nesmí dotýkať země!</strong> Nechte ji 10–20 cm nad terénem.</li>
+                    <li><strong>Větrání (Komínový efekt):</strong> Plachta Flortex je prodyšná, ale stoh musí dýchat. Plachta se proto <strong>nesmí dotýkat země!</strong> Nechte ji 10–20 cm nad terénem.</li>
                     <li><strong>Orientace stohu:</strong> Stavte stoh čelem (kratší stranou) proti směru převládajících větrů. Zmenšíte tak nápor na plochu plachty.</li>
                     <li><strong>Správné ukotvení:</strong> Plachtu maximálně vypněte a důkladně ukotvěte k zemi např. pomocí zátěžových pytlů nebo originálních klipsů Flortex. <strong>Nikdy nepoužívejte pneumatiky</strong> – drží se v nich voda, omezují dýchání plachty a mohou způsobit hnilobu.</li>
                 </ul>`
@@ -898,6 +916,7 @@
                 optSelect: "Vyberte požadovanú hodnotu",
                 errMissingSelect: "Vyberte požadovanou hodnotu zo zoznamu.",
                 errInvalidNum: "Zadajte platné číselné hodnoty do všetkých polí.",
+                errTooManyBales: "Maximálny podporovaný počet balíkov je 10 000.",
                 phTotalBales: "Zadajte celkový počet balíkov",
                 tipCostOptEnds: "💡 **Optimalizácia nákladov:** Ďalšia plachta by bola z veľkej časti nevyužitá. Ak kúpite iba **{tarps}**, ušetríte, ale nezostane vám dĺžka pre úplné zakrytie čiel stohu.",
                 tipCostOptBales: "💡 **Optimalizácia nákladov:** Ďalšia plachta by bola z veľkej časti nevyužitá. Ak kúpite iba **{tarps}**, ušetríte, ale **{n} balíkov zostane nezakrytých**.",
@@ -1012,6 +1031,7 @@
                 optSelect: "Select required value",
                 errMissingSelect: "Please select a required value from the list.",
                 errInvalidNum: "Please enter valid numbers in all fields.",
+                errTooManyBales: "The maximum supported number of bales is 10,000.",
                 phTotalBales: "Enter total number of bales",
                 tipCostOptEnds: "💡 **Cost optimization:** The additional tarp would be mostly unused. If you buy only **{tarps}**, you save money, but won't have enough length to fully cover the ends of the stack.",
                 tipCostOptBales: "💡 **Cost optimization:** The additional tarp would be mostly unused. If you buy only **{tarps}**, you save money, but **{n} bales will remain uncovered**.",
@@ -1126,6 +1146,7 @@
                 optSelect: "Seleziona il valore richiesto",
                 errMissingSelect: "Seleziona un valore richiesto dall'elenco.",
                 errInvalidNum: "Inserisci valori validi in tutti i campi.",
+                errTooManyBales: "Il numero massimo di balle supportato è 10.000.",
                 phTotalBales: "Inserisci il numero totale di balle",
                 tipCostOptEnds: "💡 **Ottimizzazione dei costi:** Il telo aggiuntivo sarebbe in gran parte inutilizzato. Se acquisti solo **{tarps}**, risparmi, ma non avrai abbastanza telo per coprire completamente le teste della catasta.",
                 tipCostOptBales: "💡 **Ottimizzazione dei costi:** Il telo aggiuntivo sarebbe in gran parte inutilizzato. Se acquisti solo **{tarps}**, risparmi, ma **{n} balle rimarranno scoperte**.",
@@ -1240,6 +1261,7 @@
                 optSelect: "Wybierz wymaganą wartość",
                 errMissingSelect: "Wybierz wymaganą wartość z listy.",
                 errInvalidNum: "Wprowadź prawidłowe wartości we wszystkich polach.",
+                errTooManyBales: "Maksymalna obsługiwana liczba bel to 10 000.",
                 phTotalBales: "Wprowadź całkowitą liczbę bel",
                 tipCostOptEnds: "💡 **Optymalizacja kosztów:** Dodatkowa plandeka byłaby w dużej mierze niewykorzystana. Jeśli kupisz tylko **{tarps}**, zaoszczędzisz, ale zabraknie długości do pełnego przykrycia czół stogu.",
                 tipCostOptBales: "💡 **Optymalizacja kosztów:** Dodatkowa plandeka byłaby w dużej mierze niewykorzystana. Jeśli kupisz tylko **{tarps}**, zaoszczędzisz, ale **{n} bel pozostanie nieprzykrytych**.",
@@ -1354,6 +1376,7 @@
                 optSelect: "Seleccione el valor requerido",
                 errMissingSelect: "Seleccione un valor requerido de la lista.",
                 errInvalidNum: "Introduzca valores válidos en todos los campos.",
+                errTooManyBales: "El número máximo de pacas admitido es 10.000.",
                 phTotalBales: "Introduzca el número total de pacas",
                 tipCostOptEnds: "💡 **Optimización de costes:** La lona adicional estaría en gran parte sin usar. Si compra solo **{tarps}**, ahorrará, pero no tendrá suficiente longitud para cubrir completamente los extremos.",
                 tipCostOptBales: "💡 **Optimización de costes:** La lona adicional estaría en gran parte sin usar. Si compra solo **{tarps}**, ahorrará, pero **{n} pacas quedarán sin cubrir**.",
@@ -1394,14 +1417,15 @@
         
         getText(key) {
             const l = this.lang;
-            return (this.translations[l] && this.translations[l][key]) ? this.translations[l][key] : (this.translations['cs'][key] || key);
+            const t = (this.translations[l] && this.translations[l][key]) ? this.translations[l][key] : (this.translations['cs'][key] || key);
+            // překlady používají **zvýraznění** – převést na <strong>, aby se hvězdičky nezobrazovaly doslova
+            return t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         },
 
         setLang(l) {
             this.lang = l;
             document.querySelectorAll('.lang-btn').forEach(b => {
-                b.classList.remove('active');
-                if (b.getAttribute('onclick').includes(`'${l}'`)) b.classList.add('active');
+                b.classList.toggle('active', b.dataset.lang === l);
             });
             document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = this.getText(el.dataset.t); });
             
@@ -1471,6 +1495,7 @@
                 } else if (this.step === 2) {
                     const tb = parseInt(document.getElementById('total_bales').value);
                     if (isNaN(tb) || tb <= 0) { isValid = false; errMsg = window.app.getText('errInvalidNum'); }
+                    else if (tb > 10000) { isValid = false; errMsg = window.app.getText('errTooManyBales'); }
                 } else if (this.step === 3) {
                     if (isRound) {
                         if (!document.getElementById('base_width_round').value) { isValid = false; errMsg = window.app.getText('errMissingSelect'); }
@@ -1557,7 +1582,7 @@
         },
 
         async saveConfig() {
-            if (!currentUser || !db) return;
+            if (!currentUser || !db || !fb) return;
             const statusEl = document.getElementById('savingStatus');
             if (statusEl) statusEl.style.display = 'inline';
             const prefs = [];
@@ -1577,18 +1602,19 @@
                 lang: this.lang
             };
             try {
-                const userDoc = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
-                await setDoc(userDoc, config);
+                const userDoc = fb.doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                await fb.setDoc(userDoc, config);
                 setTimeout(() => { if(statusEl) statusEl.style.display = 'none'; }, 1000);
-            } catch (err) {}
+            } catch (err) { console.warn('Saving config failed:', err); }
         },
 
         async loadConfig() {
-            if (!currentUser || !db) return;
+            if (!currentUser || !db || !fb) return;
             try {
-                const userDoc = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
-                const snap = await getDoc(userDoc);
+                const userDoc = fb.doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                const snap = await fb.getDoc(userDoc);
                 if (snap.exists()) {
+                    if (document.getElementById('results').style.display === 'block') return; // nepřepisovat formulář, se kterým už uživatel pracuje
                     const d = snap.data();
                     this.BALE_TYPE = d.baleType || 'round';
                     document.getElementById('bale_size_round').value = d.round_size !== undefined ? d.round_size : '1.5';
@@ -1608,7 +1634,7 @@
                     document.getElementById('stack_config_square').style.display = this.BALE_TYPE === 'square' ? 'block' : 'none';
                     if (d.lang) this.setLang(d.lang);
                 }
-            } catch (err) {}
+            } catch (err) { console.warn('Loading config failed:', err); }
         },
 
         resetForm() {
@@ -1622,9 +1648,9 @@
             document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = true);
             document.getElementById('results').style.display = 'none';
             document.getElementById('input_error').innerText = '';
-            if (currentUser && db) {
-                const userDoc = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
-                setDoc(userDoc, { baleType: this.BALE_TYPE, lang: this.lang });
+            if (currentUser && db && fb) {
+                const userDoc = fb.doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                fb.setDoc(userDoc, { baleType: this.BALE_TYPE, lang: this.lang }).catch(err => console.warn('Saving config failed:', err));
             }
         },
 
@@ -1655,23 +1681,17 @@
                 }
             });
 
-            const startAuth = async () => {
-                if (!auth) return;
-                try {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-                    else await signInAnonymously(auth);
-                } catch (e) {}
-            };
-            startAuth();
-            if (auth) onAuthStateChanged(auth, (user) => { if (user) { currentUser = user; this.loadConfig(); } });
-            this.setLang('cs'); 
+            initFirebase();
+            this.setLang('cs');
         },
 
         findOptimalCombo(lengths, target) {
             const available = [...lengths].sort((a, b) => b - a);
             let bestOver = null; let minSurplus = Infinity;
             let bestUnder = null; let minMissing = Infinity;
+            let iterations = 0; // pojistka proti zamrznutí prohlížeče u extrémně dlouhých stohů
             const search = (currentCombo, currentLen) => {
+                if (++iterations > 200000) return;
                 if (currentLen >= target) {
                     let surplus = currentLen - target;
                     if (surplus < minSurplus - 0.01) { minSurplus = surplus; bestOver = [...currentCombo]; }
@@ -1704,6 +1724,7 @@
             const prefLengthValues = Array.from(document.querySelectorAll('#prefLengthsChecklist input:checked')).map(i => parseFloat(i.value));
             if (prefLengthValues.length === 0) { errEl.innerText = this.getText('errNoLength'); return; }
             if (isNaN(totalInput) || totalInput <= 0) { errEl.innerText = this.getText('errInvalidNum'); return; }
+            if (totalInput > 10000) { errEl.innerText = this.getText('errTooManyBales'); return; }
             let bW, bH, bL, layers = [], stackW, stackH, orgName;
             if (this.BALE_TYPE === 'round') {
                 bW = bH = parseFloat(document.getElementById('bale_size_round').value);
@@ -1779,8 +1800,10 @@
         renderSuggestions(targetW, targetL, stackL, bL, crossSum, bestOption, totalInput) {
             const container = document.getElementById('tarp_suggestions'); container.innerHTML = '';
             const box = document.createElement('div'); box.className = 'best-fit-box';
-            const totalAvailL = bestOption.combo.reduce((a,b)=>a+b, 0); 
-            const rowsUnderTotal = Math.floor(totalAvailL / bL); 
+            const totalAvailL = bestOption.combo.reduce((a,b)=>a+b, 0);
+            // kapacita v řadách jen z délky využitelné pro stoh – bez přesahu na čela a fixační rezervy
+            const usableForRowsL = Math.max(0, totalAvailL - (targetL - stackL));
+            const rowsUnderTotal = Math.floor(usableForRowsL / bL);
             const surplusTotal = totalAvailL - targetL;
             const tarpCapacity = rowsUnderTotal * crossSum;
             const diff = tarpCapacity - totalInput;
@@ -1816,7 +1839,7 @@
                         const reducedLen = reducedCombo.reduce((a,b)=>a+b, 0);
                         const counts = {}; reducedCombo.forEach(l => counts[l] = (counts[l] || 0) + 1);
                         const parts = Object.entries(counts).map(([l, count]) => {
-                            const len = parseFloat(l); const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === bestGlobalOption.width && p.l === len) || (p.l === bestGlobalOption.width && p.w === len));
+                            const len = parseFloat(l); const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === bestOption.width && p.l === len) || (p.l === bestOption.width && p.w === len));
                             return `${count}ks × ${tarp.name}`;
                         });
                         const tarpList = parts.join(', ');
@@ -1836,10 +1859,10 @@
                 <div class="result-item"><span>${this.getText('itemConsideredL')}</span><span>${totalAvailL.toFixed(2)} m</span></div>
                 <div class="result-item"><span>${this.getText('itemIdeal')}</span><span>${targetW.toFixed(2)} m × ${targetL.toFixed(2)} m</span></div>
                 <div class="result-item"><span>${this.getText('itemCap')}</span><span>${tarpCapacity} ks${diffHtml}</span></div>
-                ${shortageWarning} ${wasteWarning} ${costOptWarning} ${practicalAlt} ${bestOption.combo.length > 1 ? `<div class="chain-info"><strong>${this.getText('tipComment')}</strong><br>${this.getText('tipVelcro').replace('{n}', bestOption.combo.length)}</div>` : ""}
+                ${shortageWarning} ${wasteWarning} ${costOptWarning} ${practicalAlt} ${bestOption.combo.length > 1 ? `<div class="chain-info">${this.getText('tipVelcro').replace('{n}', bestOption.combo.length)}</div>` : ""}
                 <div class="usage-tip">
                     <span class="comment-header">${this.getText('tipComment')}</span>
-                    ${surplusTotal > 0 ? `<p>${this.getText('tipSurplusUsage').replace('{n}', (Math.floor(surplusTotal/bL)*crossSum))}</p>` : ""}
+                    ${(surplusTotal > 0 && Math.floor(surplusTotal/bL)*crossSum > 0) ? `<p>${this.getText('tipSurplusUsage').replace('{n}', (Math.floor(surplusTotal/bL)*crossSum))}</p>` : ""}
                     <div class="general-tips">
                         <strong>${this.getText('genTips')}</strong>
                         <ul><li>${this.getText('tipVent')}</li><li>${this.getText('tipPallets')}</li><li>${this.getText('tipAnchor')}</li><li>${this.getText('tipSlope')}</li><li>${this.getText('tipOrientation')}</li><li>${this.getText('tipSharp')}</li><li>${this.getText('tipCheck')}</li></ul>
