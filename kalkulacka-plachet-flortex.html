@@ -1,0 +1,2171 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulačka krycích plachet</title>
+
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --bg-color: #f4f7f9;
+            --card-bg: #ffffff;
+            --text-color: #333;
+            --border-radius: 12px;
+            --shadow: 0 8px 30px rgba(0,0,0,0.08);
+            --input-bg: #ffffff;
+            --input-border: #d1d9e0;
+            --wizard-accent: #6366f1;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 10px;
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+        }
+
+        .container { 
+            max-width: 900px; 
+            width: 100%;
+            background-color: var(--card-bg); 
+            border-radius: var(--border-radius); 
+            box-shadow: var(--shadow); 
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .lang-switcher {
+            display: flex;
+            gap: 6px;
+        }
+        .lang-btn {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        .lang-btn.active {
+            background: #f0f7ff;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .info-toggle-btn, .wizard-btn {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .wizard-btn {
+            background-color: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1d4ed8;
+        }
+
+        h2 { 
+            font-size: 1.4em; 
+            margin: 0 0 20px 0; 
+            color: #1a1a1a; 
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .section-label {
+            font-size: 0.82em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            margin-bottom: 10px;
+            display: block;
+            font-weight: 700;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+
+        .row-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .form-group { margin-bottom: 15px; position: relative; padding: 5px; border-radius: 8px; transition: all 0.3s; }
+        
+        .wizard-active {
+            position: relative !important;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.4) !important;
+            background: #fff !important;
+            z-index: 1001 !important;
+            pointer-events: auto !important;
+        }
+
+        label { 
+            display: flex; 
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 6px; 
+            font-weight: 600; 
+            font-size: 0.88em; 
+            color: #444; 
+        }
+
+        .info-icon {
+            display: inline-flex;
+            width: 16px;
+            height: 16px;
+            background: #cbd5e1;
+            color: #475569;
+            border-radius: 50%;
+            font-size: 11px;
+            align-items: center;
+            justify-content: center;
+            cursor: help;
+            font-weight: 800;
+        }
+        .tooltip {
+            visibility: hidden;
+            width: 220px;
+            background-color: #334155;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px 14px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85em;
+            font-weight: 400;
+            line-height: 1.4;
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .form-group:hover .tooltip { visibility: visible; opacity: 1; }
+
+        input, select { 
+            width: 100%; 
+            padding: 11px; 
+            border: 1.5px solid var(--input-border); 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 0.95em;
+            background: var(--input-bg);
+        }
+
+        #total_bales::-webkit-inner-spin-button, 
+        #total_bales::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        #total_bales {
+            -moz-appearance: textfield;
+        }
+        input::placeholder {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .toggle-group {
+            display: flex;
+            background: #eee;
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .toggle-btn {
+            flex: 1;
+            padding: 9px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 7px;
+            font-weight: 600;
+            font-size: 0.85em;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .toggle-btn.active { background: white; color: var(--primary-color); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+        .checklist {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #d1d9e0;
+            font-size: 0.9em;
+            cursor: pointer;
+            user-select: none;
+        }
+        .check-item input { width: auto; padding: 0; margin: 0; }
+        .check-item-remove { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.85em; padding: 0 2px; line-height: 1; }
+        .check-item-remove:hover { color: #dc3545; }
+        .custom-length-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+        .custom-length-row input { max-width: 180px; }
+        .custom-length-add { padding: 10px 14px; border: 1px solid var(--primary-color); background: #fff; color: var(--primary-color); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85em; white-space: nowrap; }
+        .custom-length-add:hover { background: #f0f7ff; }
+
+        .button-group { display: flex; gap: 12px; margin-top: 25px; }
+        button#calculateButton { flex: 2; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; background-color: var(--primary-color); color: white; transition: transform 0.1s; }
+        button#calculateButton:active { transform: scale(0.98); }
+        button#resetButton { flex: 1; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; background-color: #f0f2f5; color: #555; }
+
+        .results { 
+            margin-top: 25px; 
+            padding: 20px; 
+            border-radius: var(--border-radius); 
+            display: none; 
+            background: #f0f7ff; 
+            border: 1px solid #d0e3ff; 
+        }
+        
+        .info-box { background: #fff; padding: 15px; border-radius: 10px; margin: 10px 0; border: 1px solid #eef; }
+
+        canvas#previewCanvas {
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+
+        .detailed-results { font-size: 1.05em; line-height: 1.7; color: #2d3748; margin-top: 15px; }
+        .result-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding: 4px 0; gap: 10px; }
+        .result-item span:last-child { font-weight: 700; color: #1a202c; }
+
+        .best-fit-box { background-color: #e6fffa; border: 2px solid #38b2ac; color: #234e52; padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .best-fit-box h3 { margin: 0 0 12px 0; font-size: 1.25em; color: #2c7a7b; border-bottom: 2px solid #b2f5ea; padding-bottom: 8px; }
+
+        .tarp-info-overlay {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            border: 1px solid #cbd5e0;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+
+        .manual-overlay {
+            display: none;
+            margin-top: 15px;
+            padding: 24px;
+            border: 1px solid #cbd5e0;
+            border-radius: 12px;
+            background: #f8fafc;
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #334155;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .manual-overlay h3 { margin-top: 0; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; font-size: 1.3em;}
+        .manual-overlay h4 { margin: 20px 0 8px 0; color: var(--primary-color); font-size: 1.1em; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        .manual-overlay p { margin: 0 0 12px 0; }
+        .manual-overlay ul { padding-left: 20px; margin-top: 5px; margin-bottom: 15px; }
+        .manual-overlay li { margin-bottom: 6px; }
+        .manual-intro { font-size: 1.05em; font-weight: 600; color: #475569; margin-bottom: 20px; background: #e2e8f0; padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary-color);}
+
+        .tarp-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 10px; }
+        .tarp-table th, .tarp-table td { border: 1px solid #cbd5e0; padding: 8px; text-align: center; }
+        .tarp-table th { background-color: #edf2f7; font-weight: 700; }
+        
+        .version-footer { text-align: right; font-size: 0.75em; color: #aaa; margin-top: 30px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+        .error-msg { color: #dc3545; font-size: 0.85em; margin: 15px 0; text-align: center; font-weight: 600; }
+
+        #wizardOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            backdrop-filter: blur(3px);
+            pointer-events: auto;
+        }
+        #wizardModal {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 480px;
+            background: white;
+            padding: 24px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            z-index: 1002;
+            border: 3px solid var(--wizard-accent);
+        }
+        .wizard-header { font-weight: 800; color: var(--wizard-accent); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .wizard-text { font-size: 1em; line-height: 1.5; color: #2d3748; margin-bottom: 24px; }
+        .wizard-footer { display: flex; justify-content: space-between; gap: 12px; }
+        .wizard-btn-nav { padding: 12px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 700; font-size: 0.95em; transition: all 0.2s; }
+        .wiz-next { background: var(--wizard-accent); color: white; flex: 1; }
+        .wiz-prev { background: #f1f5f9; color: #475569; }
+        .wiz-close { background: #f1f5f9; color: #94a3b8; width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+        .saving-indicator { font-size: 0.7em; color: #94a3b8; margin-left: 10px; font-style: italic; display: none; }
+        .waste-warning-box { background-color: #fffaf0; border: 2px solid #f6ad55; color: #7b341e; padding: 15px; border-radius: 10px; margin-top: 15px; font-size: 0.95em; line-height: 1.5; }
+        .practical-alt-box { background-color: #eef2ff; border: 2px solid #6366f1; color: #312e81; padding: 15px; border-radius: 10px; margin-top: 15px; font-size: 0.95em; line-height: 1.5; }
+        .usage-tip { font-size: 1.05em; margin-top: 15px; padding-top: 15px; border-top: 1px solid #b2f5ea; line-height: 1.6; }
+        .comment-header { font-weight: 800; color: #285e61; display: block; margin-bottom: 8px; font-size: 1.1em; }
+        .general-tips { margin-top: 20px; font-size: 1.05em; border-top: 1px dashed #38b2ac; padding-top: 15px; }
+        .general-tips ul { padding-left: 20px; margin: 10px 0; }
+        .chain-info { background-color: #fffaf0; border: 1px solid #feebc8; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 0.95em; color: #7b341e; border-left: 4px solid #f6ad55; }
+
+        #res_dims { 
+            font-size: 0.95em; 
+            font-weight: 400; 
+            color: #718096; 
+            margin: 20px 0; 
+            text-align: center; 
+            line-height: 1.4; 
+        }
+        #res_dims strong {
+            color: #4a5568;
+            font-weight: 600;
+        }
+        .suggested-label { 
+            font-size: 0.8em; 
+            color: #4a5568; 
+            display: block; 
+            margin-top: 20px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+        }
+        .suggested-value { 
+            color: #1a365d; 
+            font-size: 1.25em; 
+            font-weight: 900; 
+            display: block; 
+            padding-top: 5px;
+            border-top: 1.5px solid #cbd5e0;
+            margin-top: 5px;
+        }
+
+        /* PROFESSIONÁLNÍ TISKOVÝ LAYOUT */
+        @media print {
+            body { 
+                background: #fff !important; 
+                color: #000 !important; 
+                margin: 0 !important; 
+                padding: 1.5cm !important; 
+                font-size: 11pt !important; 
+            }
+            .container { 
+                box-shadow: none !important; 
+                border: none !important; 
+                padding: 0 !important; 
+                max-width: 100% !important; 
+                width: 100% !important;
+                margin: 0 !important; 
+            }
+            h2 { 
+                font-size: 18pt !important; 
+                margin: 0 0 1cm 0 !important; 
+                text-align: center !important; 
+                border-bottom: 2px solid #000 !important; 
+                padding-bottom: 0.5cm !important; 
+            }
+            .header-controls, .button-group, .info-icon, #wizardOverlay, #wizardModal, .version-footer, .print-action-btn, #tarpInfoPanel, #manualPanel, .section-label, .form-group, .row-grid-2, #fg_total, #fg_config, #fg_cover, #fg_prefs, #fg_type { 
+                display: none !important; 
+            }
+            
+            /* Výsledky jako hlavní dokument */
+            .results { 
+                display: block !important; 
+                border: none !important; 
+                padding: 0 !important; 
+                background: none !important; 
+                margin: 0 !important; 
+            }
+            
+            /* ZABRÁNĚNÍ ZALOMENÍ STRÁNKY VEDLE DŮLEŽITÝCH BLOKŮ */
+            .info-box, .detailed-results, .best-fit-box, .usage-tip, .waste-warning-box, .practical-alt-box, .chain-info { 
+                break-inside: avoid !important; 
+                page-break-inside: avoid !important; 
+                margin-bottom: 1cm !important;
+            }
+            
+            canvas#previewCanvas { 
+                max-width: 100% !important; 
+                height: auto !important;
+                display: block !important; 
+                margin: 0 auto 1cm auto !important; 
+                border: 1px solid #ccc !important; 
+            }
+            
+            .detailed-results {
+                border: 1px solid #000 !important;
+                padding: 0.5cm !important;
+            }
+            
+            .result-item { 
+                border-bottom: 1px solid #eee !important; 
+                padding: 0.2cm 0 !important;
+            }
+            
+            .best-fit-box { 
+                border: 2px solid #000 !important; 
+                background: #fff !important; 
+                color: #000 !important; 
+                padding: 0.5cm !important; 
+            }
+            
+            .suggested-value { 
+                color: #000 !important; 
+                border-top: 1px solid #000 !important;
+                font-size: 14pt !important;
+            }
+
+            /* Záhlaví tisku */
+            body::before {
+                content: "Technický list zakrytí stohu - Kalkulátor Flortex";
+                display: block;
+                text-align: right;
+                font-size: 9pt;
+                color: #666;
+                margin-bottom: 1cm;
+                border-bottom: 1px solid #ccc;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="wizardOverlay"></div>
+<div id="wizardModal" style="display: none;">
+    <div class="wizard-header">
+        <span id="wizardStepLabel">Krok 1 z 7</span>
+        <button class="wiz-close" onclick="app.wizard.stop()">✕</button>
+    </div>
+    <div class="wizard-text" id="wizardInstruction">Instrukce...</div>
+    <div id="wizardError" class="error-msg" style="margin: -10px 0 15px 0; display: none;"></div>
+    <div class="wizard-footer">
+        <button class="wizard-btn-nav wiz-prev" id="wizBtnPrev" onclick="app.wizard.prev()">Zpět</button>
+        <button class="wizard-btn-nav wiz-next" id="wizBtnNext" onclick="app.wizard.next()">Další</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="header-controls">
+        <div class="lang-switcher">
+            <div class="lang-btn active" data-lang="cs" onclick="app.setLang('cs')" title="Čeština">🇨🇿</div>
+            <div class="lang-btn" data-lang="sk" onclick="app.setLang('sk')" title="Slovenčina">🇸🇰</div>
+            <div class="lang-btn" data-lang="en" onclick="app.setLang('en')" title="English">🇬🇧</div>
+            <div class="lang-btn" data-lang="it" onclick="app.setLang('it')" title="Italiano">🇮🇹</div>
+            <div class="lang-btn" data-lang="pl" onclick="app.setLang('pl')" title="Polski">🇵🇱</div>
+            <div class="lang-btn" data-lang="es" onclick="app.setLang('es')" title="Español">🇪🇸</div>
+        </div>
+        <div class="nav-buttons">
+            <button class="wizard-btn" onclick="app.wizard.start()">
+                🪄 <span data-t="btnWizard">Spustit průvodce</span>
+            </button>
+            <button class="info-toggle-btn" onclick="app.toggleTarpInfo()">
+                📊 <span data-t="btnTarpInfo">Dostupné rozměry</span>
+            </button>
+            <button class="info-toggle-btn" onclick="app.toggleManual()">
+                📖 <span data-t="btnManual">Návod</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="tarpInfoPanel" class="tarp-info-overlay">
+        <span class="section-label" data-t="secAvailableTarps" style="margin-top:0;">Dostupné rozměry plachet Flortex</span>
+        <table class="tarp-table">
+            <thead>
+                <tr>
+                    <th data-t="thSize">Velikost (m)</th>
+                    <th data-t="thArea">Množství (m²)</th>
+                    <th data-t="thWeight">Hmotnost (kg)</th>
+                    <th style="width:40px"></th>
+                </tr>
+            </thead>
+            <tbody id="tarpTableBody"></tbody>
+        </table>
+        <div class="custom-length-row" style="flex-wrap:wrap; margin-top:12px;">
+            <input type="number" id="newTarpW" min="1" max="50" step="0.05" placeholder="Šířka (m)" style="max-width:120px">
+            <input type="number" id="newTarpL" min="1" max="200" step="0.5" placeholder="Délka (m)" style="max-width:120px">
+            <input type="number" id="newTarpKg" min="0" step="0.1" placeholder="Hmotnost (kg)" style="max-width:140px">
+            <button type="button" class="custom-length-add" onclick="app.addTarp()">+ <span data-t="btnAddLen">Přidat</span></button>
+            <button type="button" class="custom-length-add" style="border-color:#94a3b8;color:#64748b" onclick="app.restoreDefaultTarps()"><span data-t="btnRestoreDefaults">Obnovit výchozí</span></button>
+        </div>
+    </div>
+
+    <div id="manualPanel" class="manual-overlay">
+        <h3 data-t="manTitle">Komplexní manuál kalkulačky</h3>
+        <div data-t="manContent" class="manual-content-body"></div>
+    </div>
+
+    <h2>
+        <span data-t="pageTitle">Kalkulačka stohu a plachty</span> 
+        <span id="savingStatus" class="saving-indicator">Ukládání...</span>
+    </h2>
+
+    <div class="form-group" id="fg_type">
+        <span class="section-label" data-t="secBales">1. Specifikace balíků</span>
+        <label><span data-t="labelType">Typ balíků</span></label>
+        <div class="toggle-group" id="baleTypeToggle">
+            <div class="toggle-btn active" data-value="round" data-t="typeRound">Kulaté</div>
+            <div class="toggle-btn" data-value="square" data-t="typeSquare">Hranaté</div>
+        </div>
+    </div>
+
+    <div id="bale_dims_round" class="row-grid-2">
+        <div class="form-group" id="fg_round_diam">
+            <label>
+                <span data-t="labelDiam">Průměr (m)</span>
+                <span class="info-icon">i</span>
+                <div class="tooltip" data-t="tipDiamInfo">Vnější průměr jednoho kulatého balíku.</div>
+            </label>
+            <select id="bale_size_round">
+                <option value="1.2">1.20</option>
+                <option value="1.25">1.25</option>
+                <option value="1.3">1.30</option>
+                <option value="1.35">1.35</option>
+                <option value="1.4">1.40</option>
+                <option value="1.45">1.45</option>
+                <option value="1.5" selected>1.50</option>
+            </select>
+        </div>
+        <div class="form-group" id="fg_round_len">
+            <label>
+                <span data-t="labelLength">Délka (m)</span>
+                <span class="info-icon">i</span>
+                <div class="tooltip" data-t="tipLengthInfo">Délka (návin) balíku v metrech.</div>
+            </label>
+            <select id="bale_length_round">
+                <option value="1.2">1.20</option>
+                <option value="1.25">1.25</option>
+                <option value="1.3">1.30</option>
+                <option value="1.35">1.35</option>
+                <option value="1.4">1.40</option>
+                <option value="1.45">1.45</option>
+                <option value="1.5" selected>1.50</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="bale_dims_square" style="display: none;">
+        <div class="row-grid-2">
+            <div class="form-group" id="fg_sq_w">
+                <label><span data-t="labelWidth">Šířka (m)</span></label>
+                <input type="number" id="bale_width_sq" step="0.05">
+            </div>
+            <div class="form-group" id="fg_sq_h">
+                <label><span data-t="labelHeight">Výška (m)</span></label>
+                <input type="number" id="bale_height_sq" step="0.05">
+            </div>
+        </div>
+        <div class="form-group" id="fg_sq_l">
+            <label><span data-t="labelLength">Délka (m)</span></label>
+            <input type="number" id="bale_length_sq" step="0.05">
+        </div>
+    </div>
+
+    <div class="form-group" id="fg_total">
+        <label><span data-t="labelTotal">Počet balíků celkem (ks)</span></label>
+        <input type="number" id="total_bales" min="1" max="10000" placeholder="Zadejte celkový počet balíků">
+    </div>
+
+    <div class="form-group" id="fg_config">
+        <span class="section-label" data-t="secConfig">2. Konfigurace stohu</span>
+        <div id="stack_config_round">
+            <label><span data-t="labelLayout">Skladba stohu:</span></label>
+            <select id="base_width_round">
+                <option value="" disabled selected data-t="optSelect">Vyberte požadovanou hodnotu</option>
+                <option value="2-1">2-1</option>
+                <option value="3-2-1">3-2-1</option>
+                <option value="4-3-2-1">4-3-2-1</option>
+                <option value="5-4-3-2-1">5-4-3-2-1</option>
+            </select>
+        </div>
+        <div id="stack_config_square" style="display: none;">
+            <label><span data-t="labelBaseWidth">Šířka základny (ks):</span></label>
+            <select id="base_width_square">
+                <option value="" disabled selected data-t="optSelect">Vyberte požadovanou hodnotu</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group" id="fg_cover">
+        <span class="section-label" data-t="secCover">3. Způsob zakrytí</span>
+        <label><span data-t="labelCoverRange">Rozsah zakrytí:</span></label>
+        <select id="cover_method">
+            <option value="" disabled selected data-t="optSelect">Vyberte požadovanou hodnotu</option>
+            <option value="sides" data-t="optSides">pouze boky</option>
+            <option value="one_end" data-t="optOneEnd">boky + 1 čelo</option>
+            <option value="two_ends" data-t="optTwoEnds">boky + obě čela</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="fg_prefs">
+        <span class="section-label" data-t="secPrefLengths">4. Preferované délky plachet</span>
+        <div class="checklist" id="prefLengthsChecklist">
+            <label class="check-item"><input type="checkbox" value="12.5" checked> 12.50 m</label>
+            <label class="check-item"><input type="checkbox" value="15" checked> 15.00 m</label>
+            <label class="check-item"><input type="checkbox" value="17.5" checked> 17.50 m</label>
+            <label class="check-item"><input type="checkbox" value="25" checked> 25.00 m</label>
+        </div>
+        <div class="custom-length-row">
+            <input type="number" id="customLengthInput" min="1" max="200" step="0.5" placeholder="Vlastní délka (m)">
+            <button type="button" class="custom-length-add" onclick="app.addCustomLength()">+ <span data-t="btnAddLen">Přidat</span></button>
+        </div>
+    </div>
+
+    <div id="input_error" class="error-msg"></div>
+
+    <div class="button-group">
+        <button id="calculateButton" data-t="btnCalc">Provést výpočet</button>
+        <button id="resetButton" data-t="btnReset">Vynulovat</button>
+    </div>
+
+    <div id="results" class="results">
+        <div class="info-box" style="padding: 10px; text-align: center; border: none;">
+            <canvas id="previewCanvas"></canvas>
+        </div>
+        <div id="res_dims"></div>
+        <div id="detailed_output" class="detailed-results"></div>
+        <div id="tarp_suggestions"></div>
+
+        <div class="print-action-btn" style="text-align: center; margin-top: 30px; border-top: 1px solid #cbd5e0; padding-top: 25px;">
+            <button onclick="window.print()" style="background: #10b981; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-size: 1.15em; transition: transform 0.1s; box-shadow: 0 4px 15px rgba(16,185,129,0.3); width: 100%; max-width: 350px;">
+                🖨️ <span data-t="btnPrint">Vytisknout výsledky</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="version-footer">
+        <span data-t="formVersion">Verze formuláře</span>: 1.54
+    </div>
+</div>
+
+<script type="module">
+    let fbConfig = null;
+    try { if (typeof __firebase_config !== 'undefined' && __firebase_config) fbConfig = JSON.parse(__firebase_config); } catch (e) {}
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    let db = null, auth = null, currentUser = null, fb = null;
+
+    // Firebase se načítá dynamicky – při výpadku CDN musí kalkulačka dál fungovat (jen bez ukládání)
+    async function initFirebase() {
+        if (!fbConfig) return;
+        try {
+            const base = "https://www.gstatic.com/firebasejs/11.6.1/";
+            const [appMod, authMod, fsMod] = await Promise.all([
+                import(base + "firebase-app.js"),
+                import(base + "firebase-auth.js"),
+                import(base + "firebase-firestore.js")
+            ]);
+            fb = { doc: fsMod.doc, setDoc: fsMod.setDoc, getDoc: fsMod.getDoc };
+            const app_fb = appMod.initializeApp(fbConfig);
+            auth = authMod.getAuth(app_fb);
+            db = fsMod.getFirestore(app_fb);
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await authMod.signInWithCustomToken(auth, __initial_auth_token);
+                else await authMod.signInAnonymously(auth);
+            } catch (e) { console.warn('Firebase auth failed:', e); }
+            authMod.onAuthStateChanged(auth, (user) => { if (user) { currentUser = user; window.app.loadConfig(); } });
+        } catch (e) { console.warn('Firebase unavailable, settings will not be persisted:', e); }
+    }
+
+    window.app = {
+        lang: 'cs',
+        BALE_TYPE: 'round',
+        TARPS_KEY: 'flortexTarps_v1',
+        JOINT_OVERLAP: 0.2, // překrytí plachet na každém spoji při zřetězení (m)
+        DEFAULT_PLACHTY: [
+            { w: 4.95, l: 5.0, kg: 3.96 },
+            { w: 5.25, l: 10.0, kg: 8.40 },
+            { w: 6.15, l: 11.5, kg: 11.32 },
+            { w: 6.15, l: 12.5, kg: 12.30 },
+            { w: 6.15, l: 25.0, kg: 24.60 },
+            { w: 9.80, l: 12.5, kg: 19.60 },
+            { w: 9.80, l: 25.0, kg: 39.60 },
+            { w: 12.20, l: 12.5, kg: 24.40 },
+            { w: 12.20, l: 15.0, kg: 29.28 },
+            { w: 12.20, l: 17.5, kg: 34.16 },
+            { w: 12.20, l: 25.0, kg: 48.80 },
+            { w: 15.60, l: 25.0, kg: 62.40 }
+        ],
+        DOSTUPNE_PLACHTY: [],
+        translations: {
+            cs: {
+                pageTitle: "Kalkulačka stohu a plachty",
+                btnWizard: "Spustit průvodce",
+                btnTarpInfo: "Dostupné rozměry",
+                btnManual: "Návod",
+                secBales: "1. Specifikace balíků",
+                labelType: "Typ balíků",
+                typeRound: "Kulaté",
+                typeSquare: "Hranaté",
+                labelDiam: "Průměr (m)",
+                labelLength: "Délka (m)",
+                labelWidth: "Šířka (m)",
+                labelHeight: "Výška (m)",
+                labelTotal: "Počet balíků celkem (ks)",
+                secConfig: "2. Konfigurace stohu",
+                labelLayout: "Skladba stohu:",
+                labelBaseWidth: "Šířka základny (ks):",
+                secCover: "3. Způsob zakrytí",
+                labelCoverRange: "Rozsah zakrytí:",
+                optSides: "pouze boky",
+                optOneEnd: "boky + 1 čelo",
+                optTwoEnds: "boky + obě čela",
+                secPrefLengths: "4. Preferované délky plachet",
+                labelCustomLen: "Vlastní délka (m)",
+                btnAddLen: "Přidat",
+                customLenTag: "vlastní délka",
+                errCustomLen: "Zadejte platnou délku plachty (1–200 m).",
+                btnCalc: "Provést výpočet",
+                btnReset: "Vynulovat",
+                resTarpNeed: "Teoretická potřeba plachty (včetně rezerv):",
+                itemSuggested: "Doporučená plachta:",
+                itemChainSuggested: "Doporučené zřetězení plachet:",
+                secAvailableTarps: "Dostupné rozměry plachet Flortex",
+                thSize: "Velikost (m)",
+                thArea: "Množství (m²)",
+                thWeight: "Hmotnost (kg)",
+                btnRestoreDefaults: "Obnovit výchozí",
+                confirmDeleteTarp: "Odstranit plachtu {name}?",
+                confirmRestore: "Obnovit výchozí seznam plachet?",
+                errLastTarp: "Nelze odstranit poslední plachtu.",
+                itemOrg: "Zvolená organizace:",
+                itemDepth: "Hloubka stohu:",
+                itemBaseW: "Šířka základny:",
+                itemMinL: "Min. délka:",
+                itemMinW: "Min. šířka:",
+                hEval: "Zhodnocení dostupné plachty ({w} m × {l} m)",
+                itemConsideredL: "Nabízená délka materiálu:",
+                itemIdeal: "Ideální rozměr (cílový):",
+                itemCap: "Celková kapacita plachty:",
+                itemSurplus: "Máte přebytek {val} m.",
+                tipComment: "Doporučení k zakrytí:",
+                tipSurplusUsage: "Tento přebytek můžete využít k zakrytí obou čel stohu. Případně můžete stoh navýšit o {n} balíků.",
+                tipVelcro: "Vzhledem k délce stohu doporučujeme spojit {n} plachty pomocí **suchého zipu**. Výpočet již počítá s překrytím 0,2 m na každém spoji.",
+                genTips: "Série rad pro správné zakrytí:",
+                tipAnchor: "⚓ Plachtu důkladně ukotvěte proti větru.",
+                tipSlope: "📐 Stoh stavte na mírně vyvýšeném místě.",
+                tipVent: "❗ DŮLEŽITÉ: Plachta se nesmí dotýkat země!",
+                tipPallets: "📦 PODKLAD: Doporučujeme stoh podložit paletami!",
+                tipOrientation: "🧭 Stoh orientujte čelem proti větru.",
+                tipSharp: "🪵 Odstraňte ostré výčnělky.",
+                tipCheck: "🔍 Po pár dnech zkontrolujte vypnutí.",
+                formVersion: "Verze",
+                tipDiamInfo: "Vnější průměr balíku.",
+                tipLengthInfo: "Délka balíku (návin).",
+                tipLayoutInfo: "Skladba v řezu.",
+                tipCoverInfo: "Rozsah ochrany stohu.",
+                tipWasteWarning: "⚠️ Pozor na plýtvání: Délka přesahuje o {over} m. Uberte {n} balíků.",
+                tipPracticalAlt: "💡 Alternativa: Namísto 25 m použijte {n}ks o délce {size}.",
+                errNoLength: "Chyba: Vyberte aspoň jednu délku.",
+                errNoFit: "Šířka {w} m není v nabídce.",
+                wizStep: "Krok {n} z {total}",
+                wizBack: "Zpět",
+                wizNext: "Další",
+                wizFinish: "Dokončit",
+                wizS1: "Vítejte! Nejprve vyberte, zda máte kulaté nebo hranaté balíky.",
+                wizS2R: "Zadejte průměr a šířku (návin) vašich balíků.",
+                wizS2S: "Zadejte šířku, výšku a délku vašich hranatých balíků.",
+                wizS3: "Kolik balíků celkem potřebujete zakrýt?",
+                wizS4: "Jak chcete balíky poskládat? Vyberte uspořádání stohu.",
+                wizS5: "Chcete zakrýt pouze boky, nebo i jedno či obě čela stohu?",
+                wizS6: "Zvolte délky plachet, které preferujete. My pro vás najdeme nejlepší kombinaci.",
+                wizS7: "Vše je připraveno! Kliknutím na 'Dokončit' automaticky provedete výpočet a uvidíte výsledek.",
+                balesCount: "balíků",
+                optSelect: "Vyberte požadovanou hodnotu",
+                errMissingSelect: "Vyberte požadovanou hodnotu ze seznamu.",
+                errInvalidNum: "Zadejte platné číselné hodnoty do všech polí.",
+                errTooManyBales: "Maximální podporovaný počet balíků je 10 000.",
+                phTotalBales: "Zadejte celkový počet balíků",
+                tipCostOptEnds: "💡 **Optimalizace nákladů:** Další plachta by byla z velké části nevyužita. Pokud zakoupíte pouze **{tarps}**, ušetříte, ale nezbude vám dostatečná délka pro plné zakrytí čel stohu.",
+                tipCostOptBales: "💡 **Optimalizace nákladů:** Další plachta by byla z velké části nevyužita. Pokud zakoupíte pouze **{tarps}**, ušetříte, ale **{n} balíků zůstane nezakryto**.",
+                tipUneconomical: "💡 **Neekonomický přesah:** Plachta má velký přebytek ({surplus} m). Pokud ze stohu odeberete **{bales} balíků** ({rows} do délky), zkrátí se tak, že vám bude stačit výrazně menší plachta ({smallerL} m). Ušetříte tím zbytečný nákup {saved} m plachty!",
+                tipShortage: "💡 **Ekonomická volba:** Abychom se vyhnuli zbytečně velké plachtě, navrhujeme nejbližší menší rozměr. Upozorňujeme ale, že **{n} balíků zůstane nezakryto**.",
+                capUnused: "nevyužitá kapacita",
+                capMissing: "nezakryto",
+                btnPrint: "Vytisknout výsledky",
+                manTitle: "Komplexní manuál a metodika výpočtu",
+                manContent: `<div class='manual-intro'>Tato kalkulačka Vám pomůže najít ideální rozměr a kombinaci plachet Flortex pro Váš stoh. Cílem je minimalizovat odpad, snížit pořizovací náklady a zajistit maximální ochranu úrody.</div>
+                <h4>1. Specifikace balíků</h4>
+                <p>Vyberte tvar (kulaté/hranaté) a zadejte přesné rozměry. Měřte reálné balíky z pole, nespoléhejte se jen na teoretické hodnoty lisu, protože balíky po slehnutí mohou měnit tvar. U kulatých balíků je klíčový vnější průměr a šířka (tzv. návin).</p>
+                <h4>2. Konfigurace a stavba stohu</h4>
+                <p>Zadejte celkový počet balíků, které chcete uskladnit. Následně vyberte, do jaké pyramidy je budete skládat (např. 4-3-2-1 znamená 4 balíky v základně, 3 ve druhém patře atd.). Kalkulačka na pozadí vypočítá celkovou délku stohu, šířku základny a potřebnou délku obepnutí plachty (včetně fixačních rezerv).</p>
+                <h4>3. Způsob zakrytí</h4>
+                <p>Rozhodněte se, co vše má plachta chránit:</p>
+                <ul>
+                    <li><strong>Pouze boky:</strong> Plachta kryje vršek a dlouhé boky stohu, ale obě čela (kratší svislé strany na koncích) zůstávají volná.</li>
+                    <li><strong>Boky + 1 čelo / obě čela:</strong> Systém automaticky přidá k délce plachty přesně tolik metrů materiálu, abyste plachtu mohli přetáhnout i přes konce stohu kolmo dolů až na zem.</li>
+                </ul>
+                <h4>4. Zřetězení a preference plachet</h4>
+                <p>Pokud je stoh příliš dlouhý (např. 40 metrů), kalkulačka chytře navrhne "zřetězení" více plachet za sebe tak, aby měly co nejmenší možný přesah. V kroku 4 si navíc můžete vybrat, jaké délky plachet preferujete. Pokud se například chcete vyhnou manipulaci s velmi těžkou 25m plachtou, jednoduše ji odškrtněte – systém Vám automaticky přepočítá stoh na optimální kombinaci kratších plachet (např. 12,5m a 15m), které spojíte suchým zipem.</p>
+                <h4>5. Inteligentní varování (Jak ušetřit)</h4>
+                <p>Kalkulačka nepočítá jen matematicky, ale myslí i ekonomicky. Pokud narazí na neefektivní využití materiálu, zobrazí Vám varování:</p>
+                <ul>
+                    <li>🔴 <strong>Červené varování (Neekonomický přesah):</strong> Zobrazí se, pokud by Vám na konci stohu zbývalo zbytečně mnoho plachty (např. 6 metrů navíc). Systém Vám v tomto případě přesně doporučí: <em>"Odeberte X balíků, stoh se zkrátí a bude Vám stačit o třídu menší plachta."</em> Ušetříte tak peníze za nevyužitý materiál.</li>
+                    <li>🔵 <strong>Modré varování (Ekonomická volba):</strong> Někdy se naopak nevyplatí kupovat další velkou plachtu jen kvůli posledním 2-3 balíkům na konci stohu. Systém Vám navrhne koupit menší plachtu a upozorní Vás, kolik balíků sice zůstane nezakrytých, ale Vy ušetříte tisíce korun za zbytečnou plachtu.</li>
+                </ul>
+                <h4>6. Zootechnické a agronomické zásady</h4>
+                <ul>
+                    <li><strong>Zabraňte vzlínání vlhkosti:</strong> Vždy stoh podložte paletami, silnými větvemi nebo hrubým štěrkem. Vlhkost od země je největším nepřítelem skladování.</li>
+                    <li><strong>Větrání (Komínový efekt):</strong> Plachta Flortex je prodyšná, ale stoh musí dýchat. Plachta se proto <strong>nesmí dotýkat země!</strong> Nechte ji 10–20 cm nad terénem.</li>
+                    <li><strong>Orientace stohu:</strong> Stavte stoh čelem (kratší stranou) proti směru převládajících větrů. Zmenšíte tak nápor na plochu plachty.</li>
+                    <li><strong>Správné ukotvení:</strong> Plachtu maximálně vypněte a důkladně ukotvěte k zemi např. pomocí zátěžových pytlů nebo originálních klipsů Flortex. <strong>Nikdy nepoužívejte pneumatiky</strong> – drží se v nich voda, omezují dýchání plachty a mohou způsobit hnilobu.</li>
+                </ul>`
+            },
+            sk: {
+                pageTitle: "Kalkulačka stohu a plachty",
+                btnWizard: "Spustiť sprievodcu",
+                btnTarpInfo: "Dostupné rozmery",
+                btnManual: "Návod",
+                secBales: "1. Špecifikácia balíkov",
+                labelType: "Typ balíkov",
+                typeRound: "Okrúhle",
+                typeSquare: "Hranaté",
+                labelDiam: "Priemer (m)",
+                labelLength: "Dĺžka (m)",
+                labelWidth: "Šírka (m)",
+                labelHeight: "Výška (m)",
+                labelTotal: "Počet balíkov celkom (ks)",
+                secConfig: "2. Konfigurácia stohu",
+                labelLayout: "Skladba stohu:",
+                labelBaseWidth: "Šírka základne (ks):",
+                secCover: "3. Spôsob zakrytia",
+                labelCoverRange: "Rozsah zakrytia:",
+                optSides: "iba boky",
+                optOneEnd: "boky + 1 čelo",
+                optTwoEnds: "boky + obe čelá",
+                secPrefLengths: "4. Preferované dĺžky plachiet",
+                labelCustomLen: "Vlastná dĺžka (m)",
+                btnAddLen: "Pridať",
+                customLenTag: "vlastná dĺžka",
+                errCustomLen: "Zadajte platnú dĺžku plachty (1–200 m).",
+                btnCalc: "Vykonať výpočet",
+                btnReset: "Vynulovat",
+                resTarpNeed: "Teoretická potreba plachty:",
+                itemSuggested: "Odporúčaná plachta:",
+                itemChainSuggested: "Odporúčané zreťazenie plachiet:",
+                secAvailableTarps: "Dostupné rozmery plachiet Flortex",
+                thSize: "Veľkosť (m)",
+                thArea: "Množstvo (m²)",
+                thWeight: "Hmotnosť (kg)",
+                btnRestoreDefaults: "Obnoviť predvolené",
+                confirmDeleteTarp: "Odstrániť plachtu {name}?",
+                confirmRestore: "Obnoviť predvolený zoznam plachiet?",
+                errLastTarp: "Nie je možné odstrániť poslednú plachtu.",
+                itemOrg: "Zvolená organizácia:",
+                itemDepth: "Hĺbka stohu:",
+                itemBaseW: "Šírka základne:",
+                itemMinL: "Min. dĺžka:",
+                itemMinW: "Min. šírka:",
+                hEval: "Zhodnotenie dostupnej plachty ({w} m × {l} m)",
+                itemConsideredL: "Ponúkaná dĺžka materiálu:",
+                itemIdeal: "Ideálny rozmer (cieľový):",
+                itemCap: "Celková kapacita plachty:",
+                itemSurplus: "Máte prebytok {val} m.",
+                tipComment: "Odporúčanie k zakrytiu:",
+                tipSurplusUsage: "Tento prebytok využite na čelá alebo o {n} balíkov viac.",
+                tipVelcro: "Odporúčame spojiť {n} plachty suchým zipsom. Výpočet už počíta s prekrytím 0,2 m na každom spoji.",
+                genTips: "Tipy pre zakrytie:",
+                tipAnchor: "⚓ Plachtu ukotvite proti vetru.",
+                tipSlope: "📐 Stoh stavajte na vyvýšenom mieste.",
+                tipVent: "❗ DÔLEŽITÉ: Plachta nesmie byť na zemi!",
+                tipPallets: "📦 PODKLAD: Podložte paletami!",
+                tipOrientation: "🧭 Orientujte proti vetru.",
+                tipSharp: "🪵 Odstráňte ostré časti.",
+                tipCheck: "🔍 Skontrolujte vypnutie plachty.",
+                formVersion: "Verzia",
+                tipDiamInfo: "Priemer jedného balíka.",
+                tipLengthInfo: "Dĺžka balíka v metroch.",
+                tipLayoutInfo: "Spôsob skladania v reze.",
+                tipCoverInfo: "Rozsah ochrany stohu.",
+                tipWasteWarning: "⚠️ Pozor na plytvanie: Uberte {n} balíkov.",
+                tipPracticalAlt: "💡 Alternatíva: Použite {n}ks rozmeru {size}.",
+                errNoLength: "Vyberte aspoň jednu dĺžku.",
+                errNoFit: "Šírka {w} m nie je k dispozícii.",
+                wizStep: "Krok {n} z {total}",
+                wizBack: "Späť",
+                wizNext: "Ďalej",
+                wizFinish: "Dokončiť",
+                wizS1: "Vitajte! Vyberte typ vašich balíkov.",
+                wizS2R: "Zadajte rozmer vašich okrúhlych balíkov.",
+                wizS2S: "Zadajte rozmer vašich hranatých balíkov.",
+                wizS3: "Zadajte celkový počet balíkov.",
+                wizS4: "Vyberte skladbu stohu.",
+                wizS5: "Zvoľte rozsah zakrytia.",
+                wizS6: "Vyberte preferované dĺžky plachiet.",
+                wizS7: "Všetko je pripravené! Kliknutím na 'Dokončiť' automaticky vykonáte výpočet a uvidíte výsledok.",
+                balesCount: "balíkov",
+                optSelect: "Vyberte požadovanú hodnotu",
+                errMissingSelect: "Vyberte požadovanou hodnotu zo zoznamu.",
+                errInvalidNum: "Zadajte platné číselné hodnoty do všetkých polí.",
+                errTooManyBales: "Maximálny podporovaný počet balíkov je 10 000.",
+                phTotalBales: "Zadajte celkový počet balíkov",
+                tipCostOptEnds: "💡 **Optimalizácia nákladov:** Ďalšia plachta by bola z veľkej časti nevyužitá. Ak kúpite iba **{tarps}**, ušetríte, ale nezostane vám dĺžka pre úplné zakrytie čiel stohu.",
+                tipCostOptBales: "💡 **Optimalizácia nákladov:** Ďalšia plachta by bola z veľkej časti nevyužitá. Ak kúpite iba **{tarps}**, ušetríte, ale **{n} balíkov zostane nezakrytých**.",
+                tipUneconomical: "💡 **Neekonomický presah:** Plachta má veľký prebytok ({surplus} m). Ak zo stohu odoberiete **{bales} balíkov** ({rows} do dĺžky), skráti sa tak, že vám bude stačiť výrazne menšia plachta ({smallerL} m). Ušetříte tým zbytočný nákup {saved} m plachty!",
+                tipShortage: "💡 **Ekonomická voľba:** Aby sme sa vyhli zbytočne veľkej plachte, navrhujeme najbližší menší rozmer. Upozorňujeme ale, že **{n} balíkov zostane nezakrytých**.",
+                capUnused: "nevyužitá kapacita",
+                capMissing: "nezakryté",
+                btnPrint: "Vytlačiť výsledky",
+                manTitle: "Komplexný manuál a metodika výpočtu",
+                manContent: `<div class='manual-intro'>Táto kalkulačka Vám pomôže nájsť ideálny rozmer a kombináciu plachiet Flortex pre Váš stoh. Cieľom je minimalizovať odpad, znížiť obstarávacie náklady a zabezpečiť maximálnu ochranu úrody.</div>
+                <h4>1. Špecifikácia balíkov</h4>
+                <p>Vyberte tvar (okrúhle/hranaté) a zadajte presné rozmery. Merajte reálne balíky z poľa, nespoliehajte sa len na teoretické hodnoty lisu, pretože balíky po uľahnutí môžu meniť tvar. Pri okrúhlych balíkoch je kľúčový vonkajší priemer a šírka (tzv. návin).</p>
+                <h4>2. Konfigurácia a stavba stohu</h4>
+                <p>Zadajte celkový počet balíkov, ktoré chcete uskladniť. Následne vyberte, do akej pyramídy ich budete skladať (napr. 4-3-2-1 znamená 4 balíky v základni, 3 v druhom poschodí atď.). Kalkulačka na pozadí vypočíta celkovú dĺžku stohu, šírku základne a potrebnú dĺžku obopnutia plachty (vrátane fixačných rezerv).</p>
+                <h4>3. Spôsob zakrytia</h4>
+                <p>Rozhodnite sa, čo všetko má plachta chrániť:</p>
+                <ul>
+                    <li><strong>Iba boky:</strong> Plachta kryje vrchnú časť a dlhé boky stohu, ale obe čelá (kratšie zvislé strany na koncoch) zostávajú voľné.</li>
+                    <li><strong>Boky + 1 čelo / obe čelá:</strong> Systém automaticky pridá k dĺžke plachty presne toľko metrov materiálu, aby ste plachtu mohli pretiahnuť aj cez konce stohu kolmo dole až na zem.</li>
+                </ul>
+                <h4>4. Zreťazenie a preferencie plachiet</h4>
+                <p>Ak je stoh príliš dlhý (napr. 40 metrov), kalkulačka šikovne navrhne "zreťazenie" viacerých plachiet za seba tak, aby mali čo najmenší možný presah. V kroku 4 si navyše môžete vybrať, aké dĺžky plachiet preferujete. Ak sa napríklad chcete vyhnúť manipulácii s veľmi ťažkou 25m plachtou, jednoducho ju odškrtnite – systém Vám automaticky prepočíta stoh na optimální kombináciu kratších plachiet (napr. 12,5m a 15m), ktoré spojíte suchým zipsom.</p>
+                <h4>5. Inteligentné varovania (Ako ušetriť)</h4>
+                <p>Kalkulačka nepočíta len matematicky, ale myslí aj ekonomicky. Ak narazí na neefektívne využitie materiálu, zobrazí Vám varovanie:</p>
+                <ul>
+                    <li>🔴 <strong>Červené varovanie (Neekonomický presah):</strong> Zobrazí sa, ak by Vám na konci stohu zostávalo zbytočne veľa plachty (napr. 6 metrov navyše). Systém Vám v tomto prípade presne odporučí: <em>"Odoberte X balíkov, stoh sa skráti a bude Vám stačiť o triedu menšia plachta."</em> Ušetříte tak peniaze za nevyužitý materiál.</li>
+                    <li>🔵 <strong>Modré varovanie (Ekonomická voľba):</strong> Niekedy sa naopak nevyplatí kupovať ďalšiu veľkú plachtu len kvôli posledným 2-3 balíkom na konci stohu. Systém Vám navrhne kúpiť menšiu plachtu a upozorní Vás, koľko balíkov síce zostane nezakrytých, ale Vy ušetríte za zbytočnú plachtu.</li>
+                </ul>
+                <h4>6. Zootechnické a agronomické zásady</h4>
+                <ul>
+                    <li><strong>Zabráňte vzlínaniu vlhkosti:</strong> Vždy stoh podložte paletami, hrubými vetvami alebo hrubým štrkom. Vlhkosť od zeme je nejväčším nepriateľom skladovania.</li>
+                    <li><strong>Vetranie (Komínový efekt):</strong> Plachta Flortex je priedušná, ale stoh musí dýchať. Plachta sa preto <strong>nesmie dotýkať zeme!</strong> Nechajte ju 10–20 cm nad terénom.</li>
+                    <li><strong>Orientácia stohu:</strong> Stavajte stoh čelem (kratšou stranou) proti smeru prevládajúcich vetrov. Zmenšíte tak nápor na plochu plachty.</li>
+                    <li><strong>Správné ukotvenie:</strong> Plachtu maximálne vypnite a dôkladne ukotvite k zemi napr. pomocou záťažových vriec alebo originálnych klipsov Flortex. <strong>Nikdy nepoužívajte pneumatiky</strong> – drží sa v nich voda, obmedzujú dýchanie plachty a môžu spôsobiť hnilobu.</li>
+                </ul>`
+            },
+            en: {
+                pageTitle: "Stack & Tarp Calculator",
+                btnWizard: "Start Wizard",
+                btnTarpInfo: "Available Sizes",
+                btnManual: "Manual",
+                secBales: "1. Bale Specification",
+                labelType: "Bale Type",
+                typeRound: "Round",
+                typeSquare: "Square",
+                labelDiam: "Diameter (m)",
+                labelLength: "Length (m)",
+                labelWidth: "Width (m)",
+                labelHeight: "Height (m)",
+                labelTotal: "Total number of bales (pcs)",
+                secConfig: "2. Stack Configuration",
+                labelLayout: "Stack layout:",
+                labelBaseWidth: "Base width (pcs):",
+                secCover: "3. Cover Method",
+                labelCoverRange: "Cover range:",
+                optSides: "sides only",
+                optOneEnd: "sides + 1 end",
+                optTwoEnds: "sides + both ends",
+                secPrefLengths: "4. Preferred Tarp Lengths",
+                labelCustomLen: "Custom length (m)",
+                btnAddLen: "Add",
+                customLenTag: "custom length",
+                errCustomLen: "Enter a valid tarp length (1–200 m).",
+                btnCalc: "Calculate",
+                btnReset: "Reset",
+                resTarpNeed: "Theoretical Tarp Requirement:",
+                itemSuggested: "Recommended Tarp:",
+                itemChainSuggested: "Recommended Chaining:",
+                secAvailableTarps: "Available Flortex Sizes",
+                thSize: "Size (m)",
+                thArea: "Area (m²)",
+                thWeight: "Weight (kg)",
+                btnRestoreDefaults: "Restore defaults",
+                confirmDeleteTarp: "Remove tarp {name}?",
+                confirmRestore: "Restore the default tarp list?",
+                errLastTarp: "Cannot remove the last tarp.",
+                itemOrg: "Organization:",
+                itemDepth: "Stack Depth:",
+                itemBaseW: "Base Width:",
+                itemMinL: "Min. Length:",
+                itemMinW: "Min. Width:",
+                hEval: "Evaluation of Tarp ({w} m × {l} m)",
+                itemConsideredL: "Offered material length:",
+                itemIdeal: "Ideal dimension (target):",
+                itemCap: "Total capacity:",
+                itemSurplus: "Surplus of {val} m.",
+                tipComment: "Covering recommendation:",
+                tipSurplusUsage: "Use surplus for the ends or add {n} more bales.",
+                tipVelcro: "We recommend joining {n} tarps with Velcro. The calculation already includes a 0.2 m overlap at every joint.",
+                genTips: "Tips for proper covering:",
+                tipAnchor: "⚓ Anchor properly against wind.",
+                tipSlope: "📐 Build on elevated ground.",
+                tipVent: "❗ IMPORTANT: Tarp must not touch the ground!",
+                tipPallets: "📦 BASE: Use pallets!",
+                tipOrientation: "🧭 Orient against wind.",
+                tipSharp: "🪵 Remove sharp parts.",
+                tipCheck: "🔍 Check tension regularly.",
+                formVersion: "Version",
+                tipDiamInfo: "Outer diameter.",
+                tipLengthInfo: "Bale length.",
+                tipLayoutInfo: "Cross-section arrangement.",
+                tipCoverInfo: "Protection range.",
+                tipWasteWarning: "⚠️ Waste Warning: Reduce by {n} bales.",
+                tipPracticalAlt: "💡 Alternative: Use {n}pcs of size {size}.",
+                errNoLength: "Select at least one length.",
+                errNoFit: "Width {w} m not available.",
+                wizStep: "Step {n} of {total}",
+                wizBack: "Back",
+                wizNext: "Next",
+                wizFinish: "Finish",
+                wizS1: "Welcome! First, select your bale type.",
+                wizS2R: "Enter the diameter and width of your bales.",
+                wizS2S: "Enter the width, height and length of your square bales.",
+                wizS3: "How many bales do you need to cover?",
+                wizS4: "Select the stack layout.",
+                wizS5: "Choose the cover range.",
+                wizS6: "Select your preferred tarp lengths.",
+                wizS7: "Everything is ready! Click 'Finish' to automatically calculate and see the results.",
+                balesCount: "bales",
+                optSelect: "Select required value",
+                errMissingSelect: "Please select a required value from the list.",
+                errInvalidNum: "Please enter valid numbers in all fields.",
+                errTooManyBales: "The maximum supported number of bales is 10,000.",
+                phTotalBales: "Enter total number of bales",
+                tipCostOptEnds: "💡 **Cost optimization:** The additional tarp would be mostly unused. If you buy only **{tarps}**, you save money, but won't have enough length to fully cover the ends of the stack.",
+                tipCostOptBales: "💡 **Cost optimization:** The additional tarp would be mostly unused. If you buy only **{tarps}**, you save money, but **{n} bales will remain uncovered**.",
+                tipUneconomical: "💡 **Uneconomical surplus:** The tarp has a large excess ({surplus} m). If you remove **{bales} bales** ({rows} rows in length), the stack will be short enough to use a much smaller tarp ({smallerL} m), saving {saved} m of unnecessary material!",
+                tipShortage: "💡 **Economical choice:** To avoid a needlessly large tarp, we suggest the closest smaller size. Please note that **{n} bales will remain uncovered**.",
+                capUnused: "unused capacity",
+                capMissing: "uncovered",
+                btnPrint: "Print Results",
+                manTitle: "Comprehensive Manual & Methodology",
+                manContent: `<div class='manual-intro'>This calculator is designed to help you find the ideal size and combination of Flortex tarps for your stack. The goal is to minimize waste, reduce purchase costs, and ensure maximum crop protection.</div>
+                <h4>1. Bale Specification</h4>
+                <p>Select the shape (round/square) and enter the exact dimensions. Measure real bales from the field, don't rely just on theoretical baler settings, as bales can change shape after settling. For round bales, the outer diameter and roll width are crucial.</p>
+                <h4>2. Stack Configuration</h4>
+                <p>Enter the total number of bales you want to store. Then choose the pyramid layout you will use (e.g., 4-3-2-1 means 4 bales in the base layer, 3 in the second layer, etc.). The calculator works in the background to compute the total stack length, base width, and required tarp wrapping length (including fixation reserves).</p>
+                <h4>3. Covering Method</h4>
+                <p>Decide how much of the stack the tarp should protect:</p>
+                <ul>
+                    <li><strong>Sides only:</strong> The tarp covers the top and long sides of the stack, but both ends (the shorter vertical faces) remain exposed.</li>
+                    <li><strong>Sides + 1 end / both ends:</strong> The system automatically adds the exact amount of material needed to pull the tarp down over the ends of the stack to the ground.</li>
+                </ul>
+                <h4>4. Tarp Chaining and Preferences</h4>
+                <p>If the stack is too long (e.g., 40 meters), the calculator smartly suggests "chaining" multiple tarps together with the minimum possible overlap. In Step 4, you can also select your preferred tarp lengths. For example, if you want to avoid handling a very heavy 25m tarp, simply uncheck it – the system will automatically recalculate the optimal combination using shorter tarps (e.g., 12.5m and 15m) that you join with Velcro.</p>
+                <h4>5. Smart Warnings (How to save money)</h4>
+                <p>The calculator doesn't just do math; it thinks economically. If it detects inefficient material usage, it displays a warning:</p>
+                <ul>
+                    <li>🔴 <strong>Red Warning (Uneconomical surplus):</strong> Appears if you would have an unnecessarily large amount of tarp left over at the end of the stack (e.g., 6 extra meters). In this case, the system recommends: <em>"Remove X bales, the stack will shorten, and you can use a much smaller tarp."</em> This saves you money on unused material.</li>
+                    <li>🔵 <strong>Blue Warning (Economical choice):</strong> Conversely, sometimes it's not worth buying another large tarp just for the last 2-3 bales. The system will suggest buying a smaller tarp and warn you how many bales will remain uncovered, saving you from buying a needlessly large cover.</li>
+                </ul>
+                <h4>6. Zootechnical and Agronomic Best Practices</h4>
+                <ul>
+                    <li><strong>Prevent moisture wicking:</strong> Always place the stack on pallets, thick branches, or coarse gravel. Ground moisture is the biggest enemy of storage.</li>
+                    <li><strong>Ventilation (Chimney effect):</strong> Flortex tarps are breathable, but the stack must breathe. Therefore, <strong>the tarp must not touch the ground!</strong> Leave a 10–20 cm gap above the ground.</li>
+                    <li><strong>Stack orientation:</strong> Build the stack with its end facing the prevailing winds. This reduces the wind load on the main tarp surface.</li>
+                    <li><strong>Proper anchoring:</strong> Tension the tarp tightly and anchor it securely to the ground using sandbags or original Flortex clips. <strong>Never use tires</strong> – they hold water, restrict the tarp's breathability, and can cause rot.</li>
+                </ul>`
+            },
+            it: {
+                pageTitle: "Calcolatore Catasta e Telo",
+                btnWizard: "Avvia Guida",
+                btnTarpInfo: "Misure Disponibili",
+                btnManual: "Manuale",
+                secBales: "1. Specifiche Balle",
+                labelType: "Tipo Balla",
+                typeRound: "Rotonda",
+                typeSquare: "Quadra",
+                labelDiam: "Diametro (m)",
+                labelLength: "Lunghezza (m)",
+                labelWidth: "Larghezza (m)",
+                labelHeight: "Altezza (m)",
+                labelTotal: "Balle Totali (pz)",
+                secConfig: "2. Configurazione",
+                labelLayout: "Disposizione:",
+                labelBaseWidth: "Larghezza base:",
+                secCover: "3. Metodo di Copertura",
+                labelCoverRange: "Ambito:",
+                optSides: "solo lati",
+                optOneEnd: "lati + 1 fronte",
+                optTwoEnds: "lati + entrambi i fronti",
+                secPrefLengths: "4. Lunghezze Preferite",
+                labelCustomLen: "Lunghezza personalizzata (m)",
+                btnAddLen: "Aggiungi",
+                customLenTag: "lunghezza personalizzata",
+                errCustomLen: "Inserisci una lunghezza valida (1–200 m).",
+                btnCalc: "Calcola",
+                btnReset: "Reset",
+                resTarpNeed: "Fabbisogno Teorico:",
+                itemSuggested: "Telo consigliato:",
+                itemChainSuggested: "Concatenazione consigliata:",
+                secAvailableTarps: "Misure Flortex",
+                thSize: "Misura (m)",
+                thArea: "Area (m²)",
+                thWeight: "Peso (kg)",
+                btnRestoreDefaults: "Ripristina predefiniti",
+                confirmDeleteTarp: "Rimuovere il telo {name}?",
+                confirmRestore: "Ripristinare l'elenco predefinito dei teli?",
+                errLastTarp: "Impossibile rimuovere l'ultimo telo.",
+                itemOrg: "Organizzazione:",
+                itemDepth: "Profondità:",
+                itemBaseW: "Largh. base:",
+                itemMinL: "Lung. min:",
+                itemMinW: "Largh. min:",
+                hEval: "Valutazione Telo ({w} m × {l} m)",
+                itemConsideredL: "Lunghezza offerta:",
+                itemIdeal: "Misura ideale (target):",
+                itemCap: "Capacità totale:",
+                itemSurplus: "Surplus di {val} m.",
+                tipComment: "Consigli per la copertura:",
+                tipSurplusUsage: "Usa il surplus per i fronti o aggiungi {n} balle.",
+                tipVelcro: "Consigliamo di unire {n} teli con il Velcro. Il calcolo include già una sovrapposizione di 0,2 m per ogni giunzione.",
+                genTips: "Consigli per la corretta copertura:",
+                tipAnchor: "⚓ Ancorare bene contro il vento.",
+                tipSlope: "📐 Costruire su terreno sopraelevato.",
+                tipVent: "❗ IMPORTANTE: Il telo non deve toccare terra!",
+                tipPallets: "📦 BASE: Usa i pallet!",
+                tipOrientation: "🧭 Orienta contro vento.",
+                tipSharp: "🪵 Rimuovi parti taglienti.",
+                tipCheck: "🔍 Controlla tensione regolarmente.",
+                formVersion: "Versione",
+                tipDiamInfo: "Diametro esterno.",
+                tipLengthInfo: "Lunghezza balla.",
+                tipLayoutInfo: "Disposizione in sezione.",
+                tipCoverInfo: "Ambito di protezione.",
+                tipWasteWarning: "⚠️ Attenzione sprechi: Riduci di {n} balle.",
+                tipPracticalAlt: "💡 Alternativa pratica: Usa {n}pz di misura {size}.",
+                errNoLength: "Errore: Seleziona almeno una lunghezza.",
+                errNoFit: "Nessun telo adatto per larghezza ({w} m).",
+                wizStep: "Passo {n} di {total}",
+                wizBack: "Indietro",
+                wizNext: "Avanti",
+                wizFinish: "Fine",
+                wizS1: "Benvenuto! Scegli il tipo di balla.",
+                wizS2R: "Inserisci diametro e lunghezza.",
+                wizS2S: "Inserisci dimensioni delle balle quadre.",
+                wizS3: "Quante balle devi coprire?",
+                wizS4: "Scegli la disposizione della catasta.",
+                wizS5: "Scegli il metodo di copertura.",
+                wizS6: "Scegli le lunghezze preferite.",
+                wizS7: "Tutto pronto! Clicca su 'Fine' per calcolare automaticamente e vedere i risultati.",
+                balesCount: "balle",
+                optSelect: "Seleziona il valore richiesto",
+                errMissingSelect: "Seleziona un valore richiesto dall'elenco.",
+                errInvalidNum: "Inserisci valori validi in tutti i campi.",
+                errTooManyBales: "Il numero massimo di balle supportato è 10.000.",
+                phTotalBales: "Inserisci il numero totale di balle",
+                tipCostOptEnds: "💡 **Ottimizzazione dei costi:** Il telo aggiuntivo sarebbe in gran parte inutilizzato. Se acquisti solo **{tarps}**, risparmi, ma non avrai abbastanza telo per coprire completamente le teste della catasta.",
+                tipCostOptBales: "💡 **Ottimizzazione dei costi:** Il telo aggiuntivo sarebbe in gran parte inutilizzato. Se acquisti solo **{tarps}**, risparmi, ma **{n} balle rimarranno scoperte**.",
+                tipUneconomical: "💡 **Eccesso antieconomico:** Il telo ha un grande surplus ({surplus} m). Se rimuovi **{bales} balle** ({rows} file in lunghezza), la catasta sarà abbastanza corta da usare un telo molto più piccolo ({smallerL} m), risparmiando {saved} m di materiale inutile!",
+                tipShortage: "💡 **Scelta economica:** Per evitare un telo inutilmente grande, suggeriamo la misura più piccola più vicina. Si prega di notare che **{n} balle rimarranno scoperte**.",
+                capUnused: "capacità inutilizzata",
+                capMissing: "scoperte",
+                btnPrint: "Stampa Risultati",
+                manTitle: "Manuale Completo e Metodologia",
+                manContent: `<div class='manual-intro'>Questo calcolatore è progettato per aiutarti a trovare la dimensione e la combinazione ideale dei teli Flortex per la tua catasta. L'obiettivo è ridurre al minimo gli sprechi, abbassare i costi di acquisto e garantire la massima protezione del raccolto.</div>
+                <h4>1. Specifiche delle Balle</h4>
+                <p>Seleziona la forma (rotonde/quadre) e inserisci le dimensioni esatte. Misura le balle reali sul campo, non fare affidamento solo sui valori teorici della pressa, poiché le balle possono cambiare forma dopo essersi assestate. Per le balle rotonde, il diametro esterno e la larghezza del rotolo sono fondamentali.</p>
+                <h4>2. Configurazione della Catasta</h4>
+                <p>Inserisci il numero totale di balle da stoccare. Quindi scegli la disposizione a piramide che utilizzerai (es. 4-3-2-1 significa 4 balle alla base, 3 nel secondo livello, ecc.). Il calcolatore elabora la lunghezza totale della catasta, la larghezza della base e la lunghezza necessaria per avvolgere il telo (comprese le riserve per il fissaggio).</p>
+                <h4>3. Metodo di Copertura</h4>
+                <p>Decidi quanto della catasta deve essere protetto dal telo:</p>
+                <ul>
+                    <li><strong>Solo lati:</strong> Il telo copre la parte superiore e i lati lunghi della catasta, ma entrambe le teste (le facce verticali più corte) rimangono scoperte.</li>
+                    <li><strong>Lati + 1 fronte / entrambi i fronti:</strong> Il sistema aggiunge automaticamente l'esatta quantità di materiale necessaria per tirare il telo giù oltre le teste della catasta fino a terra.</li>
+                </ul>
+                <h4>4. Concatenazione e Preferenze dei Teli</h4>
+                <p>Se la catasta è troppo lunga (es. 40 metri), il calcolatore suggerisce in modo intelligente di "concatenare" più teli insieme con la minima sovrapposizione possibile. Al passo 4, puoi anche selezionare le lunghezze dei teli preferite. Ad esempio, se vuoi evitare di maneggiare un telo molto pesante da 25 m, deselezionalo: il sistema ricalcolerà automaticamente la combinazione ottimale utilizzando teli più corti (es. 12,5 m e 15 m) da unire con il Velcro.</p>
+                <h4>5. Avvisi Intelligenti (Come risparmiare)</h4>
+                <p>Il calcolatore non fa solo calcoli matematici, ma ragiona anche in termini economici. Se rileva un utilizzo inefficiente del materiale, mostra un avviso:</p>
+                <ul>
+                    <li>🔴 <strong>Avviso Rosso (Surplus antieconomico):</strong> Appare se avresti una quantità di telo inutilmente grande alla fine della catasta (es. 6 metri in più). In questo caso, il sistema raccomanda: <em>"Rimuovi X balle, la catasta si accorcerà e potrai utilizzare un telo molto più piccolo."</em> Questo ti fa risparmiare sull'acquisto di materiale inutilizzato.</li>
+                    <li>🔵 <strong>Avviso Blu (Scelta economica):</strong> Al contrario, a volte non vale la pena acquistare un altro telo grande solo per le ultime 2-3 balle. Il sistema suggerirà di acquistare un telo più piccolo e ti avviserà di quante balle rimarranno scoperte, evitandoti di acquistare una copertura inutilmente grande.</li>
+                </ul>
+                <h4>6. Buone Pratiche Zootecniche e Agronomiche</h4>
+                <ul>
+                    <li><strong>Prevenire l'umidità di risalita:</strong> Posiziona sempre la catasta su pallet, rami spessi o ghiaia grossolana. L'umidità del terreno è il peggior nemico dello stoccaggio.</li>
+                    <li><strong>Ventilazione (Effetto camino):</strong> I teli Flortex sono traspiranti, ma la catasta deve respirare. Pertanto, <strong>il telo non deve toccare terra!</strong> Lascia uno spazio di 10-20 cm dal suolo.</li>
+                    <li><strong>Orientamento della catasta:</strong> Costruisci la catasta con la testa rivolta verso i venti dominanti. Questo riduce il carico del vento sulla superficie principale del telo.</li>
+                    <li><strong>Ancoraggio corretto:</strong> Tendi bene il telo e ancoralo saldamente a terra utilizzando sacchi di sabbia o clip originali Flortex. <strong>Non utilizzare mai pneumatici</strong>: trattengono l'acqua, limitano la traspirazione del telo e possono causare marciume.</li>
+                </ul>`
+            },
+            pl: {
+                pageTitle: "Kalkulator Stogów i Plandek",
+                btnWizard: "Uruchom Kreator",
+                btnTarpInfo: "Dostępne Wymiary",
+                btnManual: "Instrukcja",
+                secBales: "1. Specyfikacja Bel",
+                labelType: "Typ Bel",
+                typeRound: "Okrągłe",
+                typeSquare: "Kostki",
+                labelDiam: "Średnica (m)",
+                labelLength: "Długość (m)",
+                labelWidth: "Szerokość (m)",
+                labelHeight: "Wysokość (m)",
+                labelTotal: "Liczba bel (szt)",
+                secConfig: "2. Konfiguracja Stogu",
+                labelLayout: "Układ stogu:",
+                labelBaseWidth: "Szerokość podstawy:",
+                secCover: "3. Sposób Przykrycia",
+                labelCoverRange: "Zakres:",
+                optSides: "tylko boki",
+                optOneEnd: "boki + 1 czoło",
+                optTwoEnds: "boki + oba czoła",
+                secPrefLengths: "4. Preferowane Długości",
+                labelCustomLen: "Własna długość (m)",
+                btnAddLen: "Dodaj",
+                customLenTag: "własna długość",
+                errCustomLen: "Podaj prawidłową długość plandeki (1–200 m).",
+                btnCalc: "Oblicz",
+                btnReset: "Reset",
+                resTarpNeed: "Teoretyczne zapotrzebowanie:",
+                itemSuggested: "Sugerowana plandeka:",
+                itemChainSuggested: "Sugerowane łączenie:",
+                secAvailableTarps: "Wymiary Flortex",
+                thSize: "Wymiar (m)",
+                thArea: "Powierzchnia",
+                thWeight: "Waga (kg)",
+                btnRestoreDefaults: "Przywróć domyślne",
+                confirmDeleteTarp: "Usunąć plandekę {name}?",
+                confirmRestore: "Przywrócić domyślną listę plandek?",
+                errLastTarp: "Nie można usunąć ostatniej plandeki.",
+                itemOrg: "Organizacja:",
+                itemDepth: "Głębokość:",
+                itemBaseW: "Szer. podstawy:",
+                itemMinL: "Dł. min:",
+                itemMinW: "Szer. min:",
+                hEval: "Ocena Plandeki ({w} m × {l} m)",
+                itemConsideredL: "Oferowana długość:",
+                itemIdeal: "Rozmiar idealny (cel):",
+                itemCap: "Pojemność całkowita:",
+                itemSurplus: "Nadmiar {val} m.",
+                tipComment: "Zalecenia dotyczące przykrycia:",
+                tipSurplusUsage: "Nadmiar wykorzystaj na czoła lub dodaj {n} bel.",
+                tipVelcro: "Zalecamy połączenie {n} plandek rzepami. Obliczenie uwzględnia już zakładkę 0,2 m na każdym łączeniu.",
+                genTips: "Zasady prawidłowego przykrycia:",
+                tipAnchor: "⚓ Dobrze zakotwicz przed wiatrem.",
+                tipSlope: "📐 Buduj na wzniesieniu.",
+                tipVent: "❗ WAŻNE: Plandeka nie może dotykać ziemi!",
+                tipPallets: "📦 PODŁOŻE: Użyj palet!",
+                tipOrientation: "🧭 Ustaw czołem do wiatru.",
+                tipSharp: "🪵 Usuń ostre elementy.",
+                tipCheck: "🔍 Sprawdź napięcie po kilku dniach.",
+                formVersion: "Wersja",
+                tipDiamInfo: "Zewnętrzna średnica beli.",
+                tipLengthInfo: "Długość beli.",
+                tipLayoutInfo: "Układ w przekroju.",
+                tipCoverInfo: "Zakres ochrony.",
+                tipWasteWarning: "⚠️ Uwaga na marnotrawstwo: Odejmij {n} bel.",
+                tipPracticalAlt: "💡 Alternatywa: Użyj {n}szt o rozmiarze {size}.",
+                errNoLength: "Błąd: Wybierz co najmniej jedną długość.",
+                errNoFit: "Nie znaleziono plandeki dla szerokości ({w} m).",
+                wizStep: "Krok {n} z {total}",
+                wizBack: "Wstecz",
+                wizNext: "Dalej",
+                wizFinish: "Zakończ",
+                wizS1: "Witaj! Wybierz typ bel.",
+                wizS2R: "Wprowadź wymiary beli okrągłej.",
+                wizS2S: "Wprowadź wymiary beli kwadratowej.",
+                wizS3: "Ile bel chcesz przykryć?",
+                wizS4: "Wybierz układ stogu.",
+                wizS5: "Wybierz zakres przykrycia.",
+                wizS6: "Wprowadź wymiary beli kwadratowej.",
+                wizS7: "Wszystko gotowe! Kliknij 'Zakończ', aby automatycznie obliczyć i zobaczyć wyniki.",
+                balesCount: "bel",
+                optSelect: "Wybierz wymaganą wartość",
+                errMissingSelect: "Wybierz wymaganą wartość z listy.",
+                errInvalidNum: "Wprowadź prawidłowe wartości we wszystkich polach.",
+                errTooManyBales: "Maksymalna obsługiwana liczba bel to 10 000.",
+                phTotalBales: "Wprowadź całkowitą liczbę bel",
+                tipCostOptEnds: "💡 **Optymalizacja kosztów:** Dodatkowa plandeka byłaby w dużej mierze niewykorzystana. Jeśli kupisz tylko **{tarps}**, zaoszczędzisz, ale zabraknie długości do pełnego przykrycia czół stogu.",
+                tipCostOptBales: "💡 **Optymalizacja kosztów:** Dodatkowa plandeka byłaby w dużej mierze niewykorzystana. Jeśli kupisz tylko **{tarps}**, zaoszczędzisz, ale **{n} bel pozostanie nieprzykrytych**.",
+                tipUneconomical: "💡 **Nieekonomiczny nadmiar:** Plandeka ma duży zapas ({surplus} m). Jeśli usuniesz ze stogu **{bales} bel** ({rows} rzędy na długość), wystarczy znacznie mniejsza plandeka ({smallerL} m). Zaoszczędzisz {saved} m niepotrzebnego materiału!",
+                tipShortage: "💡 **Ekonomiczny wybór:** Aby uniknąć niepotrzebnie dużej plandeki, sugerujemy najbliższy mniejszy rozmiar. Należy jednak pamiętać, że **{n} bel pozostanie nieprzykrytych**.",
+                capUnused: "niewykorzystana pojemność",
+                capMissing: "nieprzykryte",
+                btnPrint: "Drukuj Wyniki",
+                manTitle: "Kompleksowa Instrukcja i Metodologia",
+                manContent: `<div class='manual-intro'>Ten kalkulator został zaprojektowany, aby pomóc Ci znaleźć idealny rozmiar i kombinację plandek Flortex dla Twojego stogu. Celem jest minimalizacja odpadów, obniżenie kosztów zakupu i zapewnienie maksymalnej ochrony plonów.</div>
+                <h4>1. Specyfikacja Bel</h4>
+                <p>Wybierz kształt (okrągłe/kostki) i wprowadź dokładne wymiary. Zmierz rzeczywiste bele z pola, nie polegaj tylko na teoretycznych ustawieniach prasy, ponieważ bele mogą zmienić kształt po ułożeniu. W przypadku bel okrągłych kluczowa jest średnica zewnętrzna i szerokość rolki.</p>
+                <h4>2. Konfiguracja Stogu</h4>
+                <p>Wprowadź całkowitą liczbę bel, które chcesz przechować. Następnie wybierz układ piramidy, którego użyjesz (np. 4-3-2-1 oznacza 4 bele w warstwie podstawowej, 3 w drugiej warstwie itd.). Kalkulator działa w tle, aby obliczyć całkowitą długość stogu, szerokość podstawy i wymaganą długość opasania plandeką (w tym rezerwy na mocowanie).</p>
+                <h4>3. Sposób Przykrycia</h4>
+                <p>Zdecyduj, jaką część stogu powinna chronić plandeka:</p>
+                <ul>
+                    <li><strong>Tylko boki:</strong> Plandeka pokrywa górę i długie boki stogu, ale oba czoła (krótsze pionowe ściany na końcach) pozostają odsłonięte.</li>
+                    <li><strong>Boki + 1 czoło / oba czoła:</strong> System automatycznie dodaje dokładną ilość materiału potrzebną do ściągnięcia plandeki na końcach stogu aż do ziemi.</li>
+                </ul>
+                <h4>4. Łączenie Plandek i Preferencje</h4>
+                <p>Jeśli stóg jest zbyt długi (np. 40 metrów), kalkulator inteligentnie sugeruje "połączenie" wielu plandek razem z najmniejszym możliwym zakładem. W kroku 4 możesz również wybrać preferowane długości plandek. Na przykład, jeśli chcesz uniknąć obsługi velmi ciężkiej 25-metrowej plandeki, po prostu odznacz ją – systém automaticky przeliczy optymalną kombinację przy użyciu krótszych plandek (np. 12,5 m i 15 m), które połączysz rzepem.</p>
+                <h4>5. Inteligentne Ostrzeżenia (Jak oszczędzać)</h4>
+                <p>Kalkulator nie tylko liczy, ale też myśli ekonomicznie. Jeśli wykryje nieefektywne zużycie materiału, wyświetla ostrzeżenie:</p>
+                <ul>
+                    <li>🔴 <strong>Czerwone Ostrzeżenie (Nieekonomiczny nadmiar):</strong> Pojawia się, jeśli na końcu stogu pozostałaby niepotrzebnie duża ilość plandeki (np. 6 dodatkowych metrów). W takim przypadku system zaleca: <em>"Usuń X bel, stóg ulegnie skróceniu i będziesz mógł użyć znacznie mniejszej plandeki."</em> To pozwala zaoszczędzić pieniądze na niewykorzystanym materiale.</li>
+                    <li>🔵 <strong>Niebieskie Ostrzeżenie (Ekonomiczny wybór):</strong> Z drugiej strony, czasami nie warto kupować kolejnej dużej plandeki tylko dla ostatnich 2-3 bel. System zasugeruje zakup mniejszej plandeki i ostrzeże Cię, ile bel pozostanie nieprzykrytych, chroniąc Cię przed zakupem niepotrzebnie dużej osłony.</li>
+                </ul>
+                <h4>6. Zasady Zootechniczne i Agronomické</h4>
+                <ul>
+                    <li><strong>Zapobiegaj podciąganiu wilgoci:</strong> Zawsze umieszczaj stóg na paletach, grubych gałęziach lub grubym żwirze. Wilgoć z ziemi to największy wróg przechowywania.</li>
+                    <li><strong>Wentylacja (Efekt komina):</strong> Plandeki Flortex oddychają, ale stóg musi oddychać. Dlatego <strong>plandeka ne może dotykać ziemi!</strong> Zostaw 10–20 cm odstępu nad ziemią.</li>
+                    <li><strong>Orientacja stogu:</strong> Zbuduj stóg czołem skierowanym pod wiatr dominujący. Zmniejsza to obciążenie wiatrem na główną powierzchnię plandeki.</li>
+                    <li><strong>Właściwe kotwiczenie:</strong> Mocno naciągnij plandekę i bezpiecznie zakotwicz ją do ziemi za pomocą worků z piaskiem lub oryginalnych klipsów Flortex. <strong>Nigdy ne używaj opon</strong> – zatrzymują wodę, ograniczają oddychalność plandeki i mogą powodować gnicie.</li>
+                </ul>`
+            },
+            es: {
+                pageTitle: "Calculadora de Pila y Lona",
+                btnWizard: "Iniciar Asistente",
+                btnTarpInfo: "Medidas Disponibles",
+                btnManual: "Manual",
+                secBales: "1. Especificación de Pacas",
+                labelType: "Tipo de Pacas",
+                typeRound: "Redondas",
+                typeSquare: "Cuadradas",
+                labelDiam: "Diámetro (m)",
+                labelLength: "Longitud (m)",
+                labelWidth: "Anchura (m)",
+                labelHeight: "Altura (m)",
+                labelTotal: "Total pacas (uds)",
+                secConfig: "2. Configuración",
+                labelLayout: "Disposición:",
+                labelBaseWidth: "Ancho base:",
+                secCover: "3. Método de Cobertura",
+                labelCoverRange: "Rango:",
+                optSides: "solo lados",
+                optOneEnd: "lados + 1 extremo",
+                optTwoEnds: "lados + ambos extremos",
+                secPrefLengths: "4. Longitudes Preferidas",
+                labelCustomLen: "Longitud personalizada (m)",
+                btnAddLen: "Añadir",
+                customLenTag: "longitud personalizada",
+                errCustomLen: "Introduzca una longitud de lona válida (1–200 m).",
+                btnCalc: "Calcular",
+                btnReset: "Reset",
+                resTarpNeed: "Necesidad Teórica:",
+                itemSuggested: "Lona sugerida:",
+                itemChainSuggested: "Unión sugerida:",
+                secAvailableTarps: "Medidas Flortex",
+                thSize: "Medida (m)",
+                thArea: "Área",
+                thWeight: "Peso (kg)",
+                btnRestoreDefaults: "Restaurar predeterminados",
+                confirmDeleteTarp: "¿Eliminar la lona {name}?",
+                confirmRestore: "¿Restaurar la lista de lonas predeterminada?",
+                errLastTarp: "No se puede eliminar la última lona.",
+                itemOrg: "Organización:",
+                itemDepth: "Profundidad:",
+                itemBaseW: "Ancho base:",
+                itemMinL: "Long. mín:",
+                itemMinW: "Ancho mín:",
+                hEval: "Evaluación de Lona ({w} m × {l} m)",
+                itemConsideredL: "Longitud ofrecida:",
+                itemIdeal: "Medida ideal (objetivo):",
+                itemCap: "Capacidad total:",
+                itemSurplus: "Exceso de {val} m.",
+                tipComment: "Recomendación de cobertura:",
+                tipSurplusUsage: "Usa el exceso para los extremos o añade {n} pacas.",
+                tipVelcro: "Recomendamos unir {n} lonas con Velcro. El cálculo ya incluye un solape de 0,2 m en cada unión.",
+                genTips: "Consejos para cobertura correcta:",
+                tipAnchor: "⚓ Ancla bien contra el viento.",
+                tipSlope: "📐 Construye en terreno elevado.",
+                tipVent: "❗ IMPORTANTE: ¡La lona no debe tocar el suelo!",
+                tipPallets: "📦 BASE: ¡Usa palés!",
+                tipOrientation: "🧭 Orienta contra el viento.",
+                tipSharp: "🪵 Elimina partes cortantes.",
+                tipCheck: "🔍 Revisa la tensión regularmente.",
+                formVersion: "Versión",
+                tipDiamInfo: "Diámetro exterior.",
+                tipLengthInfo: "Longitud de paca.",
+                tipLayoutInfo: "Disposición en sección.",
+                tipCoverInfo: "Rango de protección.",
+                tipWasteWarning: "⚠️ Atención desperdicio: Quita {n} pacas.",
+                tipPracticalAlt: "💡 Alternativa práctica: Usa {n}uds de medida {size}.",
+                errNoLength: "Error: Selecciona al menos una longitud.",
+                errNoFit: "No se encontró lona adecuada para el ancho ({w} m).",
+                wizStep: "Paso {n} de {total}",
+                wizBack: "Atrás",
+                wizNext: "Siguiente",
+                wizFinish: "Finalizar",
+                wizS1: "¡Bienvenido! Elige el tipo de paca.",
+                wizS2R: "Introduce diámetro y longitud.",
+                wizS2S: "Introduce dimensiones de pacas cuadradas.",
+                wizS3: "¿Cuántas pacas necesitas cubrir?",
+                wizS4: "Elige la disposición del apilado.",
+                wizS5: "Elige el método de cobertura.",
+                wizS6: "Elige las longitudes preferidas.",
+                wizS7: "¡Todo listo! Haz clic en 'Finalizar' para calcular automáticamente y ver los resultados.",
+                balesCount: "pacas",
+                optSelect: "Seleccione el valor requerido",
+                errMissingSelect: "Seleccione un valor requerido de la lista.",
+                errInvalidNum: "Introduzca valores válidos en todos los campos.",
+                errTooManyBales: "El número máximo de pacas admitido es 10.000.",
+                phTotalBales: "Introduzca el número total de pacas",
+                tipCostOptEnds: "💡 **Optimización de costes:** La lona adicional estaría en gran parte sin usar. Si compra solo **{tarps}**, ahorrará, pero no tendrá suficiente longitud para cubrir completamente los extremos.",
+                tipCostOptBales: "💡 **Optimización de costes:** La lona adicional estaría en gran parte sin usar. Si compra solo **{tarps}**, ahorrará, pero **{n} pacas quedarán sin cubrir**.",
+                tipUneconomical: "💡 **Exceso antieconomico:** La lona tiene un gran sobrante ({surplus} m). Si quitas **{bales} pacas** ({rows} filas a lo largo) de la pila, será suficiente con una lona mucho más pequeña ({smallerL} m). ¡Ahorrarás {saved} m de material innecesario!",
+                tipShortage: "💡 **Elección económica:** Para evitar una lona innecesariamente grande, sugerimos el tamaño más pequeño más cercano. Tenga en cuenta que **{n} pacas quedarán sin cubrir**.",
+                capUnused: "capacidad no utilizada",
+                capMissing: "sin cubrir",
+                btnPrint: "Imprimir Resultados",
+                manTitle: "Manual Completo y Metodología",
+                manContent: `<div class='manual-intro'>Esta calculadora está diseñada para ayudarte a encontrar el tamaño y la combinación ideal de lonas Flortex para tu pila. El objetivo es minimizar el desperdicio, reducir los costos de compra y garantizar la máxima protección del cultivo.</div>
+                <h4>1. Especificación de Pacas</h4>
+                <p>Selecciona la forma (redondas/cuadradas) e introduce las dimensiones exactas. Mide las pacas reales del campo, no dependas solo de los valores teóricos de la empacadora, ya que las pacas pueden cambiar de forma después de asentarse. Para las pacas redondas, el diámetro exterior y la anchura del rollo son cruciales.</p>
+                <h4>2. Configuración de la Pila</h4>
+                <p>Introduce el número total de pacas que deseas almacenar. Luego elige la disposición en pirámide que utilizarás (ej. 4-3-2-1 significa 4 pacas en la base, 3 en el segundo nivel, etc.). La calculadora trabaja en segundo plano para calcular la longitud total de la pila, el ancho de la base y la longitud necesaria para envolver la lona (incluyendo reservas de fijación).</p>
+                <h4>3. Método de Cobertura</h4>
+                <p>Decide cuánto de la pila debe proteger la lona:</p>
+                <ul>
+                    <li><strong>Solo lados:</strong> La lona cubre la parte superior y los lados largos de la pila, pero ambos extremos (las caras verticales más cortas) permanecen expuestos.</li>
+                    <li><strong>Lados + 1 extremo / ambos extremos:</strong> El sistema añade automáticamente la cantidad exacta de material necesaria para tirar de la lona hacia abajo sobre los extremos de la pila hasta el suelo.</li>
+                </ul>
+                <h4>4. Unión de Lonas y Preferencias</h4>
+                <p>Si la pila es demasiado larga (ej. 40 metros), la calculadora sugiere inteligentemente "encadenar" varias lonas juntas con la mínima superposición posible. En el Paso 4, también puedes seleccionar tus longitudes de lona preferidas. Por ejemplo, si deseas evitar manipular una lona muy pesada de 25 m, simplemente desmárcala: el sistema recalculará automáticamente la combinación óptima utilizando lonas más cortas (ej. 12,5 m e 15 m) que puedes unir con Velcro.</p>
+                <h4>5. Advertencias Inteligentes (Cómo ahorrar dinero)</h4>
+                <p>La calculadora no solo hace matemáticas, sino que piensa económicamente. Si detecta un uso ineficiente del material, muestra una advertencia:</p>
+                <ul>
+                    <li>🔴 <strong>Advertencia Roja (Exceso antieconómico):</strong> Aparece si te sobraría una cantidad innecesariamente grande de lona al final de la pila (ej. 6 metros adicionales). En este caso, el sistema recomienda: <em>"Retira X pacas, la pila se acortará y podrás usar una lona mucho más pequeña."</em> Esto te ahorra dinero en material no utilizado.</li>
+                    <li>🔵 <strong>Advertencia Azul (Elección económica):</strong> Por el contrario, a veces no vale la pena comprar otra lona grande solo para las últimas 2-3 pacas. El sistema te sugerirá comprar una lona más pequeña y te advertirá cuántas pacas quedarán sin cubrir, evitándote comprar una cubierta innecesariamente grande.</li>
+                </ul>
+                <h4>6. Mejores Prácticas Zootécnicas y Agronómicas</h4>
+                <ul>
+                    <li><strong>Prevenir la humedad capilar:</strong> Coloca siempre la pila sobre palés, ramas gruesas o grava gruesa. La humedad del suelo es el mayor enemigo del almacenamiento.</li>
+                    <li><strong>Ventilación (Efecto chimenea):</strong> Lonas Flortex son transpirables, pero la pila debe respirar. Por lo tanto, <strong>¡la lona no debe tocar el suelo!</strong> Deja un espacio de 10-20 cm sobre el suelo.</li>
+                    <li><strong>Orientación de la pila:</strong> Construye la pila con su extremo de cara a los vientos dominantes. Esto reduce la carga del viento sobre la superficie principal de la lona.</li>
+                    <li><strong>Anclaje adecuado:</strong> Tensa la lona firmemente y ánclala de forma segura al suelo utilizando sacos de arena o clips originales Flortex. <strong>Nunca uses neumáticos</strong>: retienen agua, restringen la transpirabilidad de la lona y pueden causar pudrición.</li>
+                </ul>`
+            }
+        },
+        
+        getText(key) {
+            const l = this.lang;
+            const t = (this.translations[l] && this.translations[l][key]) ? this.translations[l][key] : (this.translations['cs'][key] || key);
+            // překlady používají **zvýraznění** – převést na <strong>, aby se hvězdičky nezobrazovaly doslova
+            return t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        },
+
+        setLang(l) {
+            this.lang = l;
+            document.querySelectorAll('.lang-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.lang === l);
+            });
+            document.querySelectorAll('[data-t]').forEach(el => { el.innerHTML = this.getText(el.dataset.t); });
+            
+            const totalInput = document.getElementById('total_bales');
+            if (totalInput) totalInput.placeholder = this.getText('phTotalBales');
+            const customLenInput = document.getElementById('customLengthInput');
+            if (customLenInput) customLenInput.placeholder = this.getText('labelCustomLen');
+            const tarpW = document.getElementById('newTarpW'), tarpL = document.getElementById('newTarpL'), tarpKg = document.getElementById('newTarpKg');
+            if (tarpW) tarpW.placeholder = this.getText('labelWidth');
+            if (tarpL) tarpL.placeholder = this.getText('labelLength');
+            if (tarpKg) tarpKg.placeholder = this.getText('thWeight');
+
+            if (this.wizard.active) this.wizard.updateUI();
+            if (document.getElementById('results').style.display === 'block') this.vypocitat();
+        },
+
+        toggleTarpInfo() {
+            const panel = document.getElementById('tarpInfoPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('manualPanel').style.display = 'none';
+        },
+
+        toggleManual() {
+            const panel = document.getElementById('manualPanel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('tarpInfoPanel').style.display = 'none';
+        },
+
+        // ── správa katalogu dostupných plachet ──
+        fmtNum(n) { return n.toFixed(2).replace('.', ','); },
+
+        makeTarpName(w, l) { return `Flortex 55/160 - ${this.fmtNum(w)} x ${this.fmtNum(l)} m`; },
+
+        normalizeTarps(arr) {
+            return arr
+                .filter(p => p && isFinite(p.w) && isFinite(p.l) && p.w > 0 && p.l > 0)
+                .map(p => ({ w: p.w, l: p.l, kg: isFinite(p.kg) && p.kg > 0 ? p.kg : Math.round(p.w * p.l * 0.16 * 100) / 100, name: this.makeTarpName(p.w, p.l) }))
+                .sort((a, b) => a.w - b.w || a.l - b.l);
+        },
+
+        loadTarps() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.TARPS_KEY));
+                if (Array.isArray(saved) && saved.length) {
+                    const tarps = this.normalizeTarps(saved);
+                    if (tarps.length) return tarps;
+                }
+            } catch (e) {}
+            return this.normalizeTarps(this.DEFAULT_PLACHTY);
+        },
+
+        saveTarps() {
+            try { localStorage.setItem(this.TARPS_KEY, JSON.stringify(this.DOSTUPNE_PLACHTY.map(p => ({ w: p.w, l: p.l, kg: p.kg })))); } catch (e) {}
+            this.renderTarpTable();
+            this.syncPrefLengths();
+            this.saveConfig();
+        },
+
+        renderTarpTable() {
+            const tbody = document.getElementById('tarpTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            this.DOSTUPNE_PLACHTY.forEach((p, i) => {
+                const tr = document.createElement('tr');
+                const area = Math.round(p.w * p.l * 1000) / 1000;
+                tr.innerHTML = `<td>${this.fmtNum(p.w)} x ${this.fmtNum(p.l)}</td><td>${String(area).replace('.', ',')}</td><td>${this.fmtNum(p.kg)}</td>`;
+                const td = document.createElement('td');
+                const del = document.createElement('button');
+                del.type = 'button'; del.className = 'check-item-remove'; del.textContent = '✕';
+                del.onclick = () => this.deleteTarp(i);
+                td.appendChild(del);
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            });
+        },
+
+        addTarp() {
+            const errEl = document.getElementById('input_error');
+            const w = parseFloat(String(document.getElementById('newTarpW').value).replace(',', '.'));
+            const l = parseFloat(String(document.getElementById('newTarpL').value).replace(',', '.'));
+            const kg = parseFloat(String(document.getElementById('newTarpKg').value).replace(',', '.'));
+            if (isNaN(w) || w < 1 || w > 50 || isNaN(l) || l < 1 || l > 200) { errEl.innerText = this.getText('errInvalidNum'); return; }
+            errEl.innerText = '';
+            if (this.DOSTUPNE_PLACHTY.some(p => Math.abs(p.w - w) < 0.01 && Math.abs(p.l - l) < 0.01)) return;
+            this.DOSTUPNE_PLACHTY = this.normalizeTarps([...this.DOSTUPNE_PLACHTY, { w, l, kg }]);
+            ['newTarpW', 'newTarpL', 'newTarpKg'].forEach(id => document.getElementById(id).value = '');
+            this.saveTarps();
+        },
+
+        deleteTarp(i) {
+            const tarp = this.DOSTUPNE_PLACHTY[i];
+            if (!tarp) return;
+            if (this.DOSTUPNE_PLACHTY.length <= 1) { alert(this.getText('errLastTarp')); return; }
+            if (!confirm(this.getText('confirmDeleteTarp').replace('{name}', tarp.name))) return;
+            this.DOSTUPNE_PLACHTY.splice(i, 1);
+            this.saveTarps();
+        },
+
+        restoreDefaultTarps() {
+            if (!confirm(this.getText('confirmRestore'))) return;
+            this.DOSTUPNE_PLACHTY = this.normalizeTarps(this.DEFAULT_PLACHTY);
+            this.saveTarps();
+        },
+
+        // Název plachty z katalogu; pro vlastní (nekatalogové) délky sestaví popis ručně
+        tarpName(width, len) {
+            const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === width && p.l === len) || (p.l === width && p.w === len));
+            if (tarp) return tarp.name;
+            return `${this.makeTarpName(width, len)} (${this.getText('customLenTag')})`;
+        },
+
+        prefValueExists(v) {
+            return Array.from(document.querySelectorAll('#prefLengthsChecklist input')).some(i => Math.abs(parseFloat(i.value) - v) < 0.01);
+        },
+
+        buildPrefCheckbox(v, checked, isCustom) {
+            const label = document.createElement('label');
+            label.className = 'check-item';
+            const input = document.createElement('input');
+            input.type = 'checkbox'; input.value = String(v); input.checked = checked;
+            if (isCustom) input.dataset.custom = '1';
+            label.append(input, document.createTextNode(` ${v.toFixed(2)} m `));
+            if (isCustom) {
+                const del = document.createElement('button');
+                del.type = 'button'; del.className = 'check-item-remove'; del.textContent = '✕';
+                del.onclick = (e) => { e.preventDefault(); e.stopPropagation(); label.remove(); this.saveConfig(); };
+                label.appendChild(del);
+            }
+            document.getElementById('prefLengthsChecklist').appendChild(label);
+        },
+
+        // Checklist preferovaných délek drží krok s katalogem: každá délka z katalogu má svůj
+        // checkbox (nově přidané zaškrtnuté), vlastní délky mimo katalog zůstávají zachované
+        syncPrefLengths() {
+            const list = document.getElementById('prefLengthsChecklist');
+            const prevChecked = {};
+            const customs = [];
+            list.querySelectorAll('input').forEach(i => {
+                const v = Math.round(parseFloat(i.value) * 100) / 100;
+                if (isNaN(v)) return;
+                prevChecked[v] = i.checked;
+                if (i.dataset.custom) customs.push(v);
+            });
+            const catalogLens = Array.from(new Set(this.DOSTUPNE_PLACHTY.map(p => Math.round(p.l * 100) / 100)));
+            list.innerHTML = '';
+            Array.from(new Set([...catalogLens, ...customs])).sort((a, b) => a - b).forEach(v => {
+                const isCustom = customs.includes(v) && !catalogLens.includes(v);
+                this.buildPrefCheckbox(v, prevChecked[v] !== undefined ? prevChecked[v] : true, isCustom);
+            });
+        },
+
+        addCustomLengthCheckbox(v, checked = true) {
+            if (isNaN(v) || this.prefValueExists(v)) return;
+            this.buildPrefCheckbox(v, checked, true);
+        },
+
+        addCustomLength() {
+            const inp = document.getElementById('customLengthInput');
+            const errEl = document.getElementById('input_error');
+            const v = parseFloat(String(inp.value).replace(',', '.'));
+            if (isNaN(v) || v < 1 || v > 200) { errEl.innerText = this.getText('errCustomLen'); return; }
+            errEl.innerText = '';
+            this.addCustomLengthCheckbox(Math.round(v * 100) / 100, true);
+            inp.value = '';
+            this.saveConfig();
+        },
+
+        wizard: {
+            active: false,
+            step: 0,
+            steps: [
+                { id: 'fg_type', text: 'wizS1' },
+                { id: 'bale_dims_round', idAlt: 'bale_dims_square', textR: 'wizS2R', textS: 'wizS2S' },
+                { id: 'fg_total', text: 'wizS3' },
+                { id: 'fg_config', text: 'wizS4' },
+                { id: 'fg_cover', text: 'wizS5' },
+                { id: 'fg_prefs', text: 'wizS6' },
+                { id: 'calculateButton', text: 'wizS7' }
+            ],
+            start() {
+                this.active = true;
+                this.step = 0;
+                document.getElementById('wizardError').style.display = 'none';
+                document.getElementById('wizardOverlay').style.display = 'block';
+                document.getElementById('wizardModal').style.display = 'block';
+                this.updateUI();
+            },
+            stop() {
+                this.active = false;
+                document.getElementById('wizardOverlay').style.display = 'none';
+                document.getElementById('wizardModal').style.display = 'none';
+                document.querySelectorAll('.form-group, .row-grid-2, button').forEach(el => el.classList.remove('wizard-active'));
+            },
+            next() {
+                const errEl = document.getElementById('wizardError');
+                errEl.style.display = 'none';
+                let isValid = true;
+                let errMsg = "";
+                const isRound = window.app.BALE_TYPE === 'round';
+
+                if (this.step === 1) {
+                    if (isRound) {
+                        const bw = parseFloat(document.getElementById('bale_size_round').value);
+                        const bl = parseFloat(document.getElementById('bale_length_round').value);
+                        if (isNaN(bw) || isNaN(bl) || bw <= 0 || bl <= 0) { isValid = false; errMsg = window.app.getText('errInvalidNum'); }
+                    } else {
+                        const sw = parseFloat(document.getElementById('bale_width_sq').value);
+                        const sh = parseFloat(document.getElementById('bale_height_sq').value);
+                        const sl = parseFloat(document.getElementById('bale_length_sq').value);
+                        if (isNaN(sw) || isNaN(sh) || isNaN(sl) || sw <= 0 || sh <= 0 || sl <= 0) { isValid = false; errMsg = window.app.getText('errInvalidNum'); }
+                    }
+                } else if (this.step === 2) {
+                    const tb = parseInt(document.getElementById('total_bales').value);
+                    if (isNaN(tb) || tb <= 0) { isValid = false; errMsg = window.app.getText('errInvalidNum'); }
+                    else if (tb > 10000) { isValid = false; errMsg = window.app.getText('errTooManyBales'); }
+                } else if (this.step === 3) {
+                    if (isRound) {
+                        if (!document.getElementById('base_width_round').value) { isValid = false; errMsg = window.app.getText('errMissingSelect'); }
+                    } else {
+                        if (!document.getElementById('base_width_square').value) { isValid = false; errMsg = window.app.getText('errMissingSelect'); }
+                    }
+                } else if (this.step === 4) {
+                    if (!document.getElementById('cover_method').value) { isValid = false; errMsg = window.app.getText('errMissingSelect'); }
+                } else if (this.step === 5) {
+                    const prefs = document.querySelectorAll('#prefLengthsChecklist input:checked');
+                    if (prefs.length === 0) { isValid = false; errMsg = window.app.getText('errNoLength'); }
+                }
+
+                if (!isValid) {
+                    errEl.innerText = errMsg;
+                    errEl.style.display = 'block';
+                    return;
+                }
+
+                if (this.step < this.steps.length - 1) { 
+                    this.step++; 
+                    this.updateUI(); 
+                } else { 
+                    this.stop(); 
+                    window.app.vypocitat();
+                    window.app.saveConfig();
+                    setTimeout(() => {
+                        const res = document.getElementById('results');
+                        if (res.style.display === 'block') {
+                            res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }, 150);
+                }
+            },
+            prev() {
+                if (this.step > 0) { 
+                    this.step--; 
+                    document.getElementById('wizardError').style.display = 'none';
+                    this.updateUI(); 
+                }
+            },
+            updateUI() {
+                document.querySelectorAll('.form-group, .row-grid-2, button').forEach(el => el.classList.remove('wizard-active'));
+                const isRound = window.app.BALE_TYPE === 'round';
+                const s = this.steps[this.step];
+                
+                let targetId = s.id;
+                if (this.step === 1) targetId = isRound ? 'bale_dims_round' : 'bale_dims_square';
+                
+                const el = document.getElementById(targetId);
+                if (el) {
+                    el.classList.add('wizard-active');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Automatické zaměření (focus) na první vstupní pole v sekci
+                    setTimeout(() => {
+                        const firstInput = el.querySelector('input, select, .toggle-btn');
+                        if (firstInput) {
+                            if (firstInput.classList.contains('toggle-btn')) {
+                                // U přepínačů nezaměřujeme přímo, ale uživatel vidí zvýraznění sekce
+                            } else {
+                                firstInput.focus();
+                            }
+                        }
+                    }, 400);
+                }
+
+                const modal = document.getElementById('wizardModal');
+                if (this.step >= 4) {
+                    modal.style.bottom = 'auto';
+                    modal.style.top = '30px';
+                } else {
+                    modal.style.top = 'auto';
+                    modal.style.bottom = '30px';
+                }
+
+                let instructionKey = s.text;
+                if (this.step === 1) instructionKey = isRound ? s.textR : s.textS;
+                document.getElementById('wizardInstruction').innerText = window.app.getText(instructionKey);
+                document.getElementById('wizardStepLabel').innerText = window.app.getText('wizStep').replace('{n}', this.step + 1).replace('{total}', this.steps.length);
+                document.getElementById('wizBtnPrev').style.visibility = this.step === 0 ? 'hidden' : 'visible';
+                document.getElementById('wizBtnNext').innerText = this.step === this.steps.length - 1 ? window.app.getText('wizFinish') : window.app.getText('wizNext');
+            }
+        },
+
+        async saveConfig() {
+            if (!currentUser || !db || !fb) return;
+            const statusEl = document.getElementById('savingStatus');
+            if (statusEl) statusEl.style.display = 'inline';
+            const prefs = [];
+            document.querySelectorAll('#prefLengthsChecklist input:checked').forEach(i => prefs.push(i.value));
+            // checklist se generuje z katalogu, proto se persistují vyloučené délky – nová délka v katalogu má být implicitně zaškrtnutá
+            const excl = [];
+            document.querySelectorAll('#prefLengthsChecklist input:not(:checked)').forEach(i => excl.push(i.value));
+            const config = {
+                baleType: this.BALE_TYPE,
+                round_size: document.getElementById('bale_size_round').value,
+                round_len: document.getElementById('bale_length_round').value,
+                sq_width: document.getElementById('bale_width_sq').value,
+                sq_height: document.getElementById('bale_height_sq').value,
+                sq_len: document.getElementById('bale_length_sq').value,
+                total: document.getElementById('total_bales').value,
+                base_round: document.getElementById('base_width_round').value,
+                base_sq: document.getElementById('base_width_square').value,
+                cover: document.getElementById('cover_method').value,
+                prefLengths: prefs,
+                exclLengths: excl,
+                customLengths: Array.from(document.querySelectorAll('#prefLengthsChecklist input[data-custom]')).map(i => i.value),
+                tarps: this.DOSTUPNE_PLACHTY.map(p => ({ w: p.w, l: p.l, kg: p.kg })),
+                lang: this.lang
+            };
+            try {
+                const userDoc = fb.doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                await fb.setDoc(userDoc, config);
+                setTimeout(() => { if(statusEl) statusEl.style.display = 'none'; }, 1000);
+            } catch (err) { console.warn('Saving config failed:', err); }
+        },
+
+        async loadConfig() {
+            if (!currentUser || !db || !fb) return;
+            try {
+                const userDoc = fb.doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                const snap = await fb.getDoc(userDoc);
+                if (snap.exists()) {
+                    if (document.getElementById('results').style.display === 'block') return; // nepřepisovat formulář, se kterým už uživatel pracuje
+                    const d = snap.data();
+                    this.BALE_TYPE = d.baleType || 'round';
+                    document.getElementById('bale_size_round').value = d.round_size !== undefined ? d.round_size : '1.5';
+                    document.getElementById('bale_length_round').value = d.round_len !== undefined ? d.round_len : '1.5';
+                    document.getElementById('bale_width_sq').value = d.sq_width !== undefined ? d.sq_width : '';
+                    document.getElementById('bale_height_sq').value = d.sq_height !== undefined ? d.sq_height : '';
+                    document.getElementById('bale_length_sq').value = d.sq_len !== undefined ? d.sq_len : '';
+                    document.getElementById('total_bales').value = d.total !== undefined ? d.total : '';
+                    document.getElementById('base_width_round').value = d.base_round !== undefined ? d.base_round : '';
+                    document.getElementById('base_width_square').value = d.base_sq !== undefined ? d.base_sq : '';
+                    document.getElementById('cover_method').value = d.cover !== undefined ? d.cover : '';
+                    if (Array.isArray(d.tarps) && d.tarps.length) {
+                        const tarps = this.normalizeTarps(d.tarps);
+                        if (tarps.length) {
+                            this.DOSTUPNE_PLACHTY = tarps;
+                            try { localStorage.setItem(this.TARPS_KEY, JSON.stringify(tarps.map(p => ({ w: p.w, l: p.l, kg: p.kg })))); } catch (e) {}
+                            this.renderTarpTable();
+                        }
+                    }
+                    if (d.customLengths) d.customLengths.forEach(v => this.addCustomLengthCheckbox(parseFloat(v), false));
+                    this.syncPrefLengths();
+                    if (Array.isArray(d.exclLengths)) {
+                        document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = !d.exclLengths.includes(input.value));
+                    } else if (Array.isArray(d.prefLengths)) {
+                        // starší konfigurace znala jen výchozí čtveřici délek + vlastní délky; ostatní (nové katalogové) nechat zaškrtnuté
+                        const known = new Set(['12.5', '15', '17.5', '25', ...(d.customLengths || []).map(String)]);
+                        document.querySelectorAll('#prefLengthsChecklist input').forEach(input => {
+                            if (known.has(input.value)) input.checked = d.prefLengths.includes(input.value);
+                        });
+                    }
+                    document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.value === this.BALE_TYPE));
+                    document.getElementById('bale_dims_round').style.display = this.BALE_TYPE === 'round' ? 'grid' : 'none';
+                    document.getElementById('bale_dims_square').style.display = this.BALE_TYPE === 'square' ? 'block' : 'none';
+                    document.getElementById('stack_config_round').style.display = this.BALE_TYPE === 'round' ? 'block' : 'none';
+                    document.getElementById('stack_config_square').style.display = this.BALE_TYPE === 'square' ? 'block' : 'none';
+                    if (d.lang) this.setLang(d.lang);
+                }
+            } catch (err) { console.warn('Loading config failed:', err); }
+        },
+
+        resetForm() {
+            const numInputs = ['bale_width_sq', 'bale_height_sq', 'bale_length_sq', 'total_bales'];
+            numInputs.forEach(id => document.getElementById(id).value = '');
+            document.getElementById('bale_size_round').value = '1.5';
+            document.getElementById('bale_length_round').value = '1.5';
+            document.getElementById('base_width_round').value = '';
+            document.getElementById('base_width_square').value = '';
+            document.getElementById('cover_method').value = '';
+            document.querySelectorAll('#prefLengthsChecklist input[data-custom]').forEach(i => i.closest('label').remove());
+            document.getElementById('customLengthInput').value = '';
+            document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = true);
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('input_error').innerText = '';
+            if (currentUser && db && fb) {
+                const userDoc = fb.doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'config');
+                fb.setDoc(userDoc, { baleType: this.BALE_TYPE, lang: this.lang }).catch(err => console.warn('Saving config failed:', err));
+            }
+        },
+
+        init() {
+            this.DOSTUPNE_PLACHTY = this.loadTarps();
+            this.renderTarpTable();
+            this.syncPrefLengths();
+            document.getElementById('calculateButton').onclick = () => { this.vypocitat(); this.saveConfig(); if(this.wizard.active) this.wizard.stop(); };
+            document.getElementById('resetButton').onclick = () => { this.resetForm(); };
+            document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(btn => {
+                btn.onclick = () => {
+                    document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active'); this.BALE_TYPE = btn.dataset.value;
+                    document.getElementById('bale_dims_round').style.display = this.BALE_TYPE === 'round' ? 'grid' : 'none';
+                    document.getElementById('bale_dims_square').style.display = this.BALE_TYPE === 'square' ? 'block' : 'none';
+                    document.getElementById('stack_config_round').style.display = this.BALE_TYPE === 'round' ? 'block' : 'none';
+                    document.getElementById('stack_config_square').style.display = this.BALE_TYPE === 'square' ? 'block' : 'none';
+                    this.saveConfig();
+                    if (this.wizard.active) this.wizard.updateUI();
+                };
+            });
+
+            document.getElementById('customLengthInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); this.addCustomLength(); }
+            });
+
+            // Přidání posluchače pro klávesu Enter pro potvrzení v průvodci
+            window.addEventListener('keydown', (e) => {
+                if (e.target && e.target.id === 'customLengthInput') return; // Enter zde přidává vlastní délku
+                if (e.key === 'Enter' && this.wizard.active) {
+                    // Pokud je Enter stisknut a průvodce je aktivní, simulujeme kliknutí na "Další"
+                    const nextBtn = document.getElementById('wizBtnNext');
+                    if (nextBtn && nextBtn.style.visibility !== 'hidden') {
+                        this.wizard.next();
+                    }
+                }
+            });
+
+            initFirebase();
+            this.setLang('cs');
+        },
+
+        findOptimalCombo(lengths, target) {
+            const available = [...lengths].sort((a, b) => b - a);
+            let bestOver = null; let minSurplus = Infinity;
+            let bestUnder = null; let minMissing = Infinity;
+            let iterations = 0; // pojistka proti zamrznutí prohlížeče u extrémně dlouhých stohů
+            const search = (currentCombo, currentLen) => {
+                if (++iterations > 200000) return;
+                if (currentLen >= target) {
+                    let surplus = currentLen - target;
+                    if (surplus < minSurplus - 0.01) { minSurplus = surplus; bestOver = [...currentCombo]; }
+                    else if (Math.abs(surplus - minSurplus) < 0.01) if (!bestOver || currentCombo.length < bestOver.length) bestOver = [...currentCombo];
+                    return;
+                } else {
+                    if (currentLen > 0) {
+                        let missing = target - currentLen;
+                        if (missing < minMissing - 0.01) { minMissing = missing; bestUnder = [...currentCombo]; }
+                        else if (Math.abs(missing - minMissing) < 0.01) if (!bestUnder || currentCombo.length < bestUnder.length) bestUnder = [...currentCombo];
+                    }
+                    if (currentCombo.length >= 20) return;
+                    for (let l of available) {
+                        currentCombo.push(l);
+                        // od druhého kusu se na spoji ztrácí JOINT_OVERLAP metrů krycí délky
+                        const eff = l - (currentCombo.length > 1 ? this.JOINT_OVERLAP : 0);
+                        search(currentCombo, currentLen + eff);
+                        currentCombo.pop();
+                        if (minSurplus <= 0.5) break;
+                    }
+                }
+            };
+            search([], 0); 
+            if (bestOver && minSurplus > 6.0 && bestUnder && minMissing <= 4.0) return { combo: bestUnder, surplus: -minMissing };
+            else if (bestOver && minSurplus > 8.0 && bestUnder && minMissing < minSurplus) return { combo: bestUnder, surplus: -minMissing };
+            else if (bestOver) return { combo: bestOver, surplus: minSurplus };
+            else if (bestUnder) return { combo: bestUnder, surplus: -minMissing };
+            return { combo: null, surplus: Infinity };
+        },
+
+        vypocitat() {
+            const errEl = document.getElementById('input_error'); errEl.innerText = ""; document.getElementById('results').style.display = 'none';
+            const totalInput = parseInt(document.getElementById('total_bales').value);
+            const prefLengthValues = Array.from(document.querySelectorAll('#prefLengthsChecklist input:checked')).map(i => parseFloat(i.value));
+            if (prefLengthValues.length === 0) { errEl.innerText = this.getText('errNoLength'); return; }
+            if (isNaN(totalInput) || totalInput <= 0) { errEl.innerText = this.getText('errInvalidNum'); return; }
+            if (totalInput > 10000) { errEl.innerText = this.getText('errTooManyBales'); return; }
+            let bW, bH, bL, layers = [], stackW, stackH, orgName;
+            if (this.BALE_TYPE === 'round') {
+                bW = bH = parseFloat(document.getElementById('bale_size_round').value);
+                bL = parseFloat(document.getElementById('bale_length_round').value);
+                if (isNaN(bW) || isNaN(bL) || bW <= 0 || bL <= 0) { errEl.innerText = this.getText('errInvalidNum'); return; }
+                orgName = document.getElementById('base_width_round').value;
+                if (!orgName) { errEl.innerText = this.getText('errMissingSelect'); return; }
+                layers = orgName.split('-').map(Number);
+                stackW = layers[0] * bW; stackH = bH + (layers.length - 1) * (bH * 0.866);
+            } else {
+                bW = parseFloat(document.getElementById('bale_width_sq').value);
+                bH = parseFloat(document.getElementById('bale_height_sq').value);
+                bL = parseFloat(document.getElementById('bale_length_sq').value);
+                if (isNaN(bW) || isNaN(bH) || isNaN(bL) || bW <= 0 || bH <= 0 || bL <= 0) { errEl.innerText = this.getText('errInvalidNum'); return; }
+                const baseVal = document.getElementById('base_width_square').value;
+                if (!baseVal) { errEl.innerText = this.getText('errMissingSelect'); return; }
+                const base = parseInt(baseVal);
+                orgName = `Base:${base}`; layers = [base, base-1];
+                stackW = base * bW; stackH = 2 * bH;
+            }
+            const crossSum = layers.reduce((a, b) => a + b, 0);
+            const rowCount = Math.ceil(totalInput / crossSum);
+            const stackL = rowCount * bL;
+            const arcW = (this.BALE_TYPE === 'round') ? (2 * stackW) : (Math.sqrt(Math.pow(stackW/2, 2) + Math.pow(stackH, 2)) * 2 + 1);
+            let neededL = stackL;
+            const coverMethod = document.getElementById('cover_method').value;
+            if (!coverMethod) { errEl.innerText = this.getText('errMissingSelect'); return; }
+            if (coverMethod === 'one_end') neededL += stackH; else if (coverMethod === 'two_ends') neededL += (2 * stackH);
+            const targetW = arcW + 0.15; const targetL = neededL + 0.50;
+            const widthGroups = {};
+            this.DOSTUPNE_PLACHTY.forEach(p => {
+                if (p.w >= targetW && prefLengthValues.includes(p.l)) { if (!widthGroups[p.w]) widthGroups[p.w] = new Set(); widthGroups[p.w].add(p.l); }
+                if (p.l >= targetW && prefLengthValues.includes(p.w)) { if (!widthGroups[p.l]) widthGroups[p.l] = new Set(); widthGroups[p.l].add(p.w); }
+            });
+            // Vlastní délky: plachta se řeže z role standardní šířky, vlastní délku lze proto kombinovat s každou dostatečně širokou rolí
+            const catalogDims = new Set(this.DOSTUPNE_PLACHTY.flatMap(p => [p.w, p.l]));
+            const rollWidths = Array.from(new Set(this.DOSTUPNE_PLACHTY.map(p => p.w)));
+            prefLengthValues.filter(l => !catalogDims.has(l)).forEach(l => {
+                rollWidths.filter(w => w >= targetW).forEach(w => {
+                    if (!widthGroups[w]) widthGroups[w] = new Set();
+                    widthGroups[w].add(l);
+                });
+            });
+            let bestGlobalOption = null;
+            for (let wStr in widthGroups) {
+                const w = parseFloat(wStr); const lengths = Array.from(widthGroups[wStr]); const result = this.findOptimalCombo(lengths, targetL);
+                if (result.combo) {
+                    const option = { width: w, combo: result.combo, surplus: result.surplus, wasteW: w - targetW };
+                    if (!bestGlobalOption || option.wasteW < bestGlobalOption.wasteW - 0.05 || (Math.abs(option.wasteW - bestGlobalOption.wasteW) < 0.05 && option.surplus < bestGlobalOption.surplus)) bestGlobalOption = option;
+                }
+            }
+            if (!bestGlobalOption) { errEl.innerText = this.getText('errNoFit').replace('{w}', targetW.toFixed(2)); return; }
+            let bestTarpStr = "";
+            if (bestGlobalOption.combo.length === 1) {
+                const l = bestGlobalOption.combo[0];
+                bestTarpStr = `<span class="suggested-label">${this.getText('itemSuggested')}</span><span class="suggested-value">${this.tarpName(bestGlobalOption.width, l)}</span>`;
+            } else {
+                const counts = {}; bestGlobalOption.combo.forEach(l => counts[l] = (counts[l] || 0) + 1);
+                const parts = Object.entries(counts).map(([l, count]) => {
+                    return `${count}ks × ${this.tarpName(bestGlobalOption.width, parseFloat(l))}`;
+                });
+                bestTarpStr = `<span class="suggested-label">${this.getText('itemChainSuggested')}</span><span class="suggested-value">${parts.join('<br>')}</span>`;
+            }
+            document.getElementById('detailed_output').innerHTML = `
+                <div class="result-item"><span>${this.getText('itemOrg')}</span><span>${orgName}</span></div>
+                <div class="result-item"><span>${this.getText('itemDepth')}</span><span>${rowCount} ${this.getText('balesCount')} (${stackL.toFixed(2)} m)</span></div>
+                <div class="result-item"><span>${this.getText('itemBaseW')}</span><span>${stackW.toFixed(2)} m</span></div>
+                <div class="result-item"><span>${this.getText('itemMinL')}</span><span>${stackL.toFixed(2)} m</span></div>
+                <div class="result-item"><span>${this.getText('itemMinW')}</span><span>${arcW.toFixed(2)} m</span></div>
+            `;
+            document.getElementById('res_dims').innerHTML = `
+                <div style="margin-bottom: 5px;">${this.getText('resTarpNeed')}</div>
+                <strong>${arcW.toFixed(2)} m × ${neededL.toFixed(2)} m</strong>
+                ${bestTarpStr}
+            `;
+            this.renderSuggestions(targetW, targetL, stackL, bL, crossSum, bestGlobalOption, totalInput);
+            this.drawPreview(layers, bW, bH, stackW, stackH, stackL);
+            document.getElementById('results').style.display = 'block';
+        },
+
+        renderSuggestions(targetW, targetL, stackL, bL, crossSum, bestOption, totalInput) {
+            const container = document.getElementById('tarp_suggestions'); container.innerHTML = '';
+            const box = document.createElement('div'); box.className = 'best-fit-box';
+            const totalAvailL = bestOption.combo.reduce((a,b)=>a+b, 0);
+            // skutečná krycí délka = materiál minus překrytí na spojích
+            const coverL = totalAvailL - this.JOINT_OVERLAP * Math.max(0, bestOption.combo.length - 1);
+            // kapacita v řadách jen z délky využitelné pro stoh – bez přesahu na čela a fixační rezervy
+            const usableForRowsL = Math.max(0, coverL - (targetL - stackL));
+            const rowsUnderTotal = Math.floor(usableForRowsL / bL);
+            const surplusTotal = coverL - targetL;
+            const tarpCapacity = rowsUnderTotal * crossSum;
+            const diff = tarpCapacity - totalInput;
+            let diffHtml = diff > 0 ? ` <span style="color: #e53e3e; font-weight: 700;">(+${diff} ks - ${this.getText('capUnused')})</span>` : (diff < 0 ? ` <span style="color: #e53e3e; font-weight: 700;">(${diff} ks - ${this.getText('capMissing')})</span>` : "");
+            let wasteWarning = "", costOptWarning = "", economicalWarning = "", shortageWarning = "";
+            if (surplusTotal < 0) {
+                let actualMissingL = targetL - 0.50 - coverL;
+                if (actualMissingL > 0) shortageWarning = `<div class="waste-warning-box" style="border-color: #3182ce; background-color: #ebf8ff; color: #2b6cb0; margin-bottom: 15px;">${this.getText('tipShortage').replace('{n}', Math.abs(diff))}</div>`;
+            } else {
+                if (surplusTotal >= 2.5) {
+                    for (let r = 1; r <= 3; r++) {
+                        let reducedTargetL = targetL - (r * bL);
+                        if (reducedTargetL <= 0) break;
+                        let validLengthsForWidth = Array.from(new Set(this.DOSTUPNE_PLACHTY.filter(p => p.w === bestOption.width || p.l === bestOption.width).map(p => p.w === bestOption.width ? p.l : p.w)));
+                        if (this.DOSTUPNE_PLACHTY.some(p => p.w === bestOption.width)) {
+                            document.querySelectorAll('#prefLengthsChecklist input[data-custom]:checked').forEach(i => {
+                                const cl = parseFloat(i.value);
+                                if (!isNaN(cl) && !validLengthsForWidth.includes(cl)) validLengthsForWidth.push(cl);
+                            });
+                        }
+                        let testResult = this.findOptimalCombo(validLengthsForWidth, reducedTargetL);
+                        if (testResult.combo && testResult.surplus >= 0) {
+                            let testAvailL = testResult.combo.reduce((a,b)=>a+b, 0);
+                            if (testAvailL < totalAvailL && (totalAvailL - testAvailL) >= 2.5) { 
+                                economicalWarning = `<div class="waste-warning-box" style="border-color: #e53e3e; background-color: #fff5f5; color: #c53030; margin-bottom: 15px;">${this.getText('tipUneconomical').replace('{surplus}', surplusTotal.toFixed(2)).replace('{bales}', r * crossSum).replace('{rows}', r).replace('{smallerL}', testAvailL.toFixed(2)).replace('{saved}', (totalAvailL - testAvailL).toFixed(2))}</div>`;
+                                break; 
+                            }
+                        }
+                    }
+                }
+                if (bestOption.combo.length > 1) {
+                    const uniqueLens = Array.from(new Set(bestOption.combo)).sort((a,b)=>b-a); 
+                    const longestSingle = uniqueLens[0]; const overSingle = targetL - longestSingle;
+                    if (overSingle > 0 && overSingle < (longestSingle * 0.35)) wasteWarning = `<div class="waste-warning-box">${this.getText('tipWasteWarning').replace('{over}', overSingle.toFixed(2)).replace('{n}', (Math.ceil(overSingle / bL) * crossSum))}</div>`;
+                    const sortedCombo = [...bestOption.combo].sort((a, b) => a - b);
+                    const smallestTarp = sortedCombo[0];
+                    if (surplusTotal > (smallestTarp * 0.30)) {
+                        const reducedCombo = [...bestOption.combo]; reducedCombo.splice(reducedCombo.indexOf(smallestTarp), 1);
+                        const reducedLen = reducedCombo.reduce((a,b)=>a+b, 0) - this.JOINT_OVERLAP * Math.max(0, reducedCombo.length - 1);
+                        const counts = {}; reducedCombo.forEach(l => counts[l] = (counts[l] || 0) + 1);
+                        const parts = Object.entries(counts).map(([l, count]) => {
+                            return `${count}ks × ${this.tarpName(bestOption.width, parseFloat(l))}`;
+                        });
+                        const tarpList = parts.join(', ');
+                        if (reducedLen >= stackL) costOptWarning = `<div class="waste-warning-box" style="border-color: #e53e3e; background-color: #fff5f5; color: #c53030;">${this.getText('tipCostOptEnds').replace('{tarps}', tarpList)}</div>`;
+                        else costOptWarning = `<div class="waste-warning-box" style="border-color: #e53e3e; background-color: #fff5f5; color: #c53030;">${this.getText('tipCostOptBales').replace('{tarps}', tarpList).replace('{n}', Math.max(0, totalInput - (Math.floor(reducedLen / bL) * crossSum)))}</div>`;
+                    }
+                }
+                if (economicalWarning) { wasteWarning = economicalWarning; costOptWarning = ""; }
+            }
+            let practicalAlt = "";
+            if (bestOption.combo.some(l => l === 25)) {
+                const altTarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === bestOption.width && p.l === 12.5) || (p.l === bestOption.width && p.w === 12.5));
+                if (altTarp) practicalAlt = `<div class="practical-alt-box">${this.getText('tipPracticalAlt').replace('{n}', Math.ceil(targetL / 12.5)).replace('{size}', altTarp.name)}</div>`;
+            }
+            box.innerHTML = `
+                <h3>${this.getText('hEval').replace('{w}', bestOption.width.toFixed(2)).replace('{l}', totalAvailL.toFixed(2))}</h3>
+                <div class="result-item"><span>${this.getText('itemConsideredL')}</span><span>${totalAvailL.toFixed(2)} m</span></div>
+                <div class="result-item"><span>${this.getText('itemIdeal')}</span><span>${targetW.toFixed(2)} m × ${targetL.toFixed(2)} m</span></div>
+                <div class="result-item"><span>${this.getText('itemCap')}</span><span>${tarpCapacity} ks${diffHtml}</span></div>
+                ${shortageWarning} ${wasteWarning} ${costOptWarning} ${practicalAlt} ${bestOption.combo.length > 1 ? `<div class="chain-info">${this.getText('tipVelcro').replace('{n}', bestOption.combo.length)}</div>` : ""}
+                <div class="usage-tip">
+                    <span class="comment-header">${this.getText('tipComment')}</span>
+                    ${(surplusTotal > 0 && Math.floor(surplusTotal/bL)*crossSum > 0) ? `<p>${this.getText('tipSurplusUsage').replace('{n}', (Math.floor(surplusTotal/bL)*crossSum))}</p>` : ""}
+                    <div class="general-tips">
+                        <strong>${this.getText('genTips')}</strong>
+                        <ul><li>${this.getText('tipVent')}</li><li>${this.getText('tipPallets')}</li><li>${this.getText('tipAnchor')}</li><li>${this.getText('tipSlope')}</li><li>${this.getText('tipOrientation')}</li><li>${this.getText('tipSharp')}</li><li>${this.getText('tipCheck')}</li></ul>
+                    </div>
+                </div>
+            `;
+            container.appendChild(box);
+        },
+
+        drawPreview(layers, bW, bH, stackW, stackH, stackL) {
+            const canvas = document.getElementById('previewCanvas'); if (!canvas) return;
+            const ctx = canvas.getContext('2d'); const cw = canvas.width = 1200; const ch = canvas.height = 900;
+            ctx.clearRect(0, 0, cw, ch); const padding = 150; const scale = Math.min((cw - 600) / stackW, (ch - padding * 2) / stackH);
+            const offX = 160; const offY = ch - padding;
+            ctx.fillStyle = '#fbbf24'; ctx.strokeStyle = '#92400e'; ctx.lineWidth = 4;
+            let cy = 0;
+            layers.forEach((count) => {
+                const lw = count * bW; const sx = offX + (stackW - lw) * scale / 2; const drawY = offY - cy * scale;
+                for (let i = 0; i < count; i++) {
+                    const drawX = sx + i * bW * scale;
+                    if (this.BALE_TYPE === 'round') { const r = (bW * scale) / 2; ctx.beginPath(); ctx.arc(drawX + r, drawY - r, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+                    else { ctx.beginPath(); ctx.rect(drawX, drawY - bH * scale, bW * scale, bH * scale); ctx.fill(); ctx.stroke(); }
+                }
+                cy += (this.BALE_TYPE === 'round') ? (bH * 0.866) : bH;
+            });
+            ctx.strokeStyle = '#333'; ctx.fillStyle = '#333'; ctx.lineWidth = 3; ctx.font = 'bold 36px sans-serif';
+            const drawKota = (x1, y1, x2, y2, label, pos) => {
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+                const head = 25; const angle = Math.atan2(y2 - y1, x2 - x1);
+                const drawHead = (x, y, ang) => { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - head * Math.cos(ang - 0.4), y - head * Math.sin(ang - 0.4)); ctx.moveTo(x, y); ctx.lineTo(x - head * Math.cos(ang + 0.4), y - head * Math.sin(ang + 0.4)); ctx.stroke(); };
+                drawHead(x1, y1, angle + Math.PI); drawHead(x2, y2, angle);
+                if (pos === 'bottom') { ctx.textAlign = 'center'; ctx.fillText(label, (x1 + x2) / 2, y1 + 60); }
+                else if (pos === 'left') { ctx.textAlign = 'center'; ctx.save(); ctx.translate(x1 - 40, (y1 + y2) / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(label, 0, 0); ctx.restore(); }
+                else if (pos === 'perspective') { ctx.textAlign = 'left'; ctx.fillText(label, x1 + 40, y1 - 20); }
+            };
+            drawKota(offX, offY + 80, offX + stackW * scale, offY + 80, `š = ${stackW.toFixed(1)} m`, 'bottom');
+            drawKota(offX - 50, offY, offX - 50, offY - stackH * scale, `V = ${stackH.toFixed(1)} m`, 'left');
+            drawKota(offX + stackW * scale, offY, cw - 120, 150, `d = ${stackL.toFixed(1)} m`, 'perspective');
+        }
+    };
+    window.addEventListener('DOMContentLoaded', () => { app.init(); });
+</script>
+</body>
+</html>
