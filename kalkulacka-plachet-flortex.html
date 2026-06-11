@@ -246,6 +246,12 @@
             user-select: none;
         }
         .check-item input { width: auto; padding: 0; margin: 0; }
+        .check-item-remove { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.85em; padding: 0 2px; line-height: 1; }
+        .check-item-remove:hover { color: #dc3545; }
+        .custom-length-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+        .custom-length-row input { max-width: 180px; }
+        .custom-length-add { padding: 10px 14px; border: 1px solid var(--primary-color); background: #fff; color: var(--primary-color); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85em; white-space: nowrap; }
+        .custom-length-add:hover { background: #f0f7ff; }
 
         .button-group { display: flex; gap: 12px; margin-top: 25px; }
         button#calculateButton { flex: 2; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; background-color: var(--primary-color); color: white; transition: transform 0.1s; }
@@ -652,6 +658,10 @@
             <label class="check-item"><input type="checkbox" value="17.5" checked> 17.50 m</label>
             <label class="check-item"><input type="checkbox" value="25" checked> 25.00 m</label>
         </div>
+        <div class="custom-length-row">
+            <input type="number" id="customLengthInput" min="1" max="200" step="0.5" placeholder="Vlastní délka (m)">
+            <button type="button" class="custom-length-add" onclick="app.addCustomLength()">+ <span data-t="btnAddLen">Přidat</span></button>
+        </div>
     </div>
 
     <div id="input_error" class="error-msg"></div>
@@ -677,7 +687,7 @@
     </div>
 
     <div class="version-footer">
-        <span data-t="formVersion">Verze formuláře</span>: 1.49
+        <span data-t="formVersion">Verze formuláře</span>: 1.50
     </div>
 </div>
 
@@ -746,6 +756,10 @@
                 optOneEnd: "boky + 1 čelo",
                 optTwoEnds: "boky + obě čela",
                 secPrefLengths: "4. Preferované délky plachet",
+                labelCustomLen: "Vlastní délka (m)",
+                btnAddLen: "Přidat",
+                customLenTag: "vlastní délka",
+                errCustomLen: "Zadejte platnou délku plachty (1–200 m).",
                 btnCalc: "Provést výpočet",
                 btnReset: "Vynulovat",
                 resTarpNeed: "Teoretická potřeba plachty (včetně rezerv):",
@@ -861,6 +875,10 @@
                 optOneEnd: "boky + 1 čelo",
                 optTwoEnds: "boky + obe čelá",
                 secPrefLengths: "4. Preferované dĺžky plachiet",
+                labelCustomLen: "Vlastná dĺžka (m)",
+                btnAddLen: "Pridať",
+                customLenTag: "vlastná dĺžka",
+                errCustomLen: "Zadajte platnú dĺžku plachty (1–200 m).",
                 btnCalc: "Vykonať výpočet",
                 btnReset: "Vynulovat",
                 resTarpNeed: "Teoretická potreba plachty:",
@@ -976,6 +994,10 @@
                 optOneEnd: "sides + 1 end",
                 optTwoEnds: "sides + both ends",
                 secPrefLengths: "4. Preferred Tarp Lengths",
+                labelCustomLen: "Custom length (m)",
+                btnAddLen: "Add",
+                customLenTag: "custom length",
+                errCustomLen: "Enter a valid tarp length (1–200 m).",
                 btnCalc: "Calculate",
                 btnReset: "Reset",
                 resTarpNeed: "Theoretical Tarp Requirement:",
@@ -1091,6 +1113,10 @@
                 optOneEnd: "lati + 1 fronte",
                 optTwoEnds: "lati + entrambi i fronti",
                 secPrefLengths: "4. Lunghezze Preferite",
+                labelCustomLen: "Lunghezza personalizzata (m)",
+                btnAddLen: "Aggiungi",
+                customLenTag: "lunghezza personalizzata",
+                errCustomLen: "Inserisci una lunghezza valida (1–200 m).",
                 btnCalc: "Calcola",
                 btnReset: "Reset",
                 resTarpNeed: "Fabbisogno Teorico:",
@@ -1206,6 +1232,10 @@
                 optOneEnd: "boki + 1 czoło",
                 optTwoEnds: "boki + oba czoła",
                 secPrefLengths: "4. Preferowane Długości",
+                labelCustomLen: "Własna długość (m)",
+                btnAddLen: "Dodaj",
+                customLenTag: "własna długość",
+                errCustomLen: "Podaj prawidłową długość plandeki (1–200 m).",
                 btnCalc: "Oblicz",
                 btnReset: "Reset",
                 resTarpNeed: "Teoretyczne zapotrzebowanie:",
@@ -1321,6 +1351,10 @@
                 optOneEnd: "lados + 1 extremo",
                 optTwoEnds: "lados + ambos extremos",
                 secPrefLengths: "4. Longitudes Preferidas",
+                labelCustomLen: "Longitud personalizada (m)",
+                btnAddLen: "Añadir",
+                customLenTag: "longitud personalizada",
+                errCustomLen: "Introduzca una longitud de lona válida (1–200 m).",
                 btnCalc: "Calcular",
                 btnReset: "Reset",
                 resTarpNeed: "Necesidad Teórica:",
@@ -1431,6 +1465,8 @@
             
             const totalInput = document.getElementById('total_bales');
             if (totalInput) totalInput.placeholder = this.getText('phTotalBales');
+            const customLenInput = document.getElementById('customLengthInput');
+            if (customLenInput) customLenInput.placeholder = this.getText('labelCustomLen');
 
             if (this.wizard.active) this.wizard.updateUI();
             if (document.getElementById('results').style.display === 'block') this.vypocitat();
@@ -1446,6 +1482,42 @@
             const panel = document.getElementById('manualPanel');
             panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
             document.getElementById('tarpInfoPanel').style.display = 'none';
+        },
+
+        // Název plachty z katalogu; pro vlastní (nekatalogové) délky sestaví popis ručně
+        tarpName(width, len) {
+            const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === width && p.l === len) || (p.l === width && p.w === len));
+            if (tarp) return tarp.name;
+            const fmt = n => n.toFixed(2).replace('.', ',');
+            return `Flortex 55/160 - ${fmt(width)} x ${fmt(len)} m (${this.getText('customLenTag')})`;
+        },
+
+        prefValueExists(v) {
+            return Array.from(document.querySelectorAll('#prefLengthsChecklist input')).some(i => Math.abs(parseFloat(i.value) - v) < 0.01);
+        },
+
+        addCustomLengthCheckbox(v, checked = true) {
+            if (isNaN(v) || this.prefValueExists(v)) return;
+            const label = document.createElement('label');
+            label.className = 'check-item';
+            const input = document.createElement('input');
+            input.type = 'checkbox'; input.value = String(v); input.checked = checked; input.dataset.custom = '1';
+            const del = document.createElement('button');
+            del.type = 'button'; del.className = 'check-item-remove'; del.textContent = '✕';
+            del.onclick = (e) => { e.preventDefault(); e.stopPropagation(); label.remove(); this.saveConfig(); };
+            label.append(input, document.createTextNode(` ${v.toFixed(2)} m `), del);
+            document.getElementById('prefLengthsChecklist').appendChild(label);
+        },
+
+        addCustomLength() {
+            const inp = document.getElementById('customLengthInput');
+            const errEl = document.getElementById('input_error');
+            const v = parseFloat(String(inp.value).replace(',', '.'));
+            if (isNaN(v) || v < 1 || v > 200) { errEl.innerText = this.getText('errCustomLen'); return; }
+            errEl.innerText = '';
+            this.addCustomLengthCheckbox(Math.round(v * 100) / 100, true);
+            inp.value = '';
+            this.saveConfig();
         },
 
         wizard: {
@@ -1599,6 +1671,7 @@
                 base_sq: document.getElementById('base_width_square').value,
                 cover: document.getElementById('cover_method').value,
                 prefLengths: prefs,
+                customLengths: Array.from(document.querySelectorAll('#prefLengthsChecklist input[data-custom]')).map(i => i.value),
                 lang: this.lang
             };
             try {
@@ -1626,6 +1699,7 @@
                     document.getElementById('base_width_round').value = d.base_round !== undefined ? d.base_round : '';
                     document.getElementById('base_width_square').value = d.base_sq !== undefined ? d.base_sq : '';
                     document.getElementById('cover_method').value = d.cover !== undefined ? d.cover : '';
+                    if (d.customLengths) d.customLengths.forEach(v => this.addCustomLengthCheckbox(parseFloat(v), false));
                     if (d.prefLengths) document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = d.prefLengths.includes(input.value));
                     document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.value === this.BALE_TYPE));
                     document.getElementById('bale_dims_round').style.display = this.BALE_TYPE === 'round' ? 'grid' : 'none';
@@ -1645,6 +1719,8 @@
             document.getElementById('base_width_round').value = '';
             document.getElementById('base_width_square').value = '';
             document.getElementById('cover_method').value = '';
+            document.querySelectorAll('#prefLengthsChecklist input[data-custom]').forEach(i => i.closest('label').remove());
+            document.getElementById('customLengthInput').value = '';
             document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = true);
             document.getElementById('results').style.display = 'none';
             document.getElementById('input_error').innerText = '';
@@ -1670,8 +1746,13 @@
                 };
             });
 
+            document.getElementById('customLengthInput').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); this.addCustomLength(); }
+            });
+
             // Přidání posluchače pro klávesu Enter pro potvrzení v průvodci
             window.addEventListener('keydown', (e) => {
+                if (e.target && e.target.id === 'customLengthInput') return; // Enter zde přidává vlastní délku
                 if (e.key === 'Enter' && this.wizard.active) {
                     // Pokud je Enter stisknut a průvodce je aktivní, simulujeme kliknutí na "Další"
                     const nextBtn = document.getElementById('wizBtnNext');
@@ -1759,6 +1840,15 @@
                 if (p.w >= targetW && prefLengthValues.includes(p.l)) { if (!widthGroups[p.w]) widthGroups[p.w] = new Set(); widthGroups[p.w].add(p.l); }
                 if (p.l >= targetW && prefLengthValues.includes(p.w)) { if (!widthGroups[p.l]) widthGroups[p.l] = new Set(); widthGroups[p.l].add(p.w); }
             });
+            // Vlastní délky: plachta se řeže z role standardní šířky, vlastní délku lze proto kombinovat s každou dostatečně širokou rolí
+            const catalogDims = new Set(this.DOSTUPNE_PLACHTY.flatMap(p => [p.w, p.l]));
+            const rollWidths = Array.from(new Set(this.DOSTUPNE_PLACHTY.map(p => p.w)));
+            prefLengthValues.filter(l => !catalogDims.has(l)).forEach(l => {
+                rollWidths.filter(w => w >= targetW).forEach(w => {
+                    if (!widthGroups[w]) widthGroups[w] = new Set();
+                    widthGroups[w].add(l);
+                });
+            });
             let bestGlobalOption = null;
             for (let wStr in widthGroups) {
                 const w = parseFloat(wStr); const lengths = Array.from(widthGroups[wStr]); const result = this.findOptimalCombo(lengths, targetL);
@@ -1770,13 +1860,12 @@
             if (!bestGlobalOption) { errEl.innerText = this.getText('errNoFit').replace('{w}', targetW.toFixed(2)); return; }
             let bestTarpStr = "";
             if (bestGlobalOption.combo.length === 1) {
-                const l = bestGlobalOption.combo[0]; const finalSuggestedTarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === bestGlobalOption.width && p.l === l) || (p.l === bestGlobalOption.width && p.w === l));
-                bestTarpStr = `<span class="suggested-label">${this.getText('itemSuggested')}</span><span class="suggested-value">${finalSuggestedTarp.name}</span>`;
+                const l = bestGlobalOption.combo[0];
+                bestTarpStr = `<span class="suggested-label">${this.getText('itemSuggested')}</span><span class="suggested-value">${this.tarpName(bestGlobalOption.width, l)}</span>`;
             } else {
                 const counts = {}; bestGlobalOption.combo.forEach(l => counts[l] = (counts[l] || 0) + 1);
                 const parts = Object.entries(counts).map(([l, count]) => {
-                    const len = parseFloat(l); const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === bestGlobalOption.width && p.l === len) || (p.l === bestGlobalOption.width && p.w === len));
-                    return `${count}ks × ${tarp.name}`;
+                    return `${count}ks × ${this.tarpName(bestGlobalOption.width, parseFloat(l))}`;
                 });
                 bestTarpStr = `<span class="suggested-label">${this.getText('itemChainSuggested')}</span><span class="suggested-value">${parts.join('<br>')}</span>`;
             }
@@ -1818,6 +1907,12 @@
                         let reducedTargetL = targetL - (r * bL);
                         if (reducedTargetL <= 0) break;
                         let validLengthsForWidth = Array.from(new Set(this.DOSTUPNE_PLACHTY.filter(p => p.w === bestOption.width || p.l === bestOption.width).map(p => p.w === bestOption.width ? p.l : p.w)));
+                        if (this.DOSTUPNE_PLACHTY.some(p => p.w === bestOption.width)) {
+                            document.querySelectorAll('#prefLengthsChecklist input[data-custom]:checked').forEach(i => {
+                                const cl = parseFloat(i.value);
+                                if (!isNaN(cl) && !validLengthsForWidth.includes(cl)) validLengthsForWidth.push(cl);
+                            });
+                        }
                         let testResult = this.findOptimalCombo(validLengthsForWidth, reducedTargetL);
                         if (testResult.combo && testResult.surplus >= 0) {
                             let testAvailL = testResult.combo.reduce((a,b)=>a+b, 0);
@@ -1839,8 +1934,7 @@
                         const reducedLen = reducedCombo.reduce((a,b)=>a+b, 0);
                         const counts = {}; reducedCombo.forEach(l => counts[l] = (counts[l] || 0) + 1);
                         const parts = Object.entries(counts).map(([l, count]) => {
-                            const len = parseFloat(l); const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === bestOption.width && p.l === len) || (p.l === bestOption.width && p.w === len));
-                            return `${count}ks × ${tarp.name}`;
+                            return `${count}ks × ${this.tarpName(bestOption.width, parseFloat(l))}`;
                         });
                         const tarpList = parts.join(', ');
                         if (reducedLen >= stackL) costOptWarning = `<div class="waste-warning-box" style="border-color: #e53e3e; background-color: #fff5f5; color: #c53030;">${this.getText('tipCostOptEnds').replace('{tarps}', tarpList)}</div>`;
