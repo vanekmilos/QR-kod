@@ -525,19 +525,18 @@
                     <th data-t="thSize">Velikost (m)</th>
                     <th data-t="thArea">Množství (m²)</th>
                     <th data-t="thWeight">Hmotnost (kg)</th>
+                    <th style="width:40px"></th>
                 </tr>
             </thead>
-            <tbody>
-                <tr><td>6,15 x 12,50</td><td>76,875</td><td>12,30</td></tr>
-                <tr><td>6,15 x 25,00</td><td>153,75</td><td>24,60</td></tr>
-                <tr><td>9,80 x 12,50</td><td>122,50</td><td>19,60</td></tr>
-                <tr><td>9,80 x 25,00</td><td>245,00</td><td>39,60</td></tr>
-                <tr><td>12,20 x 15,00</td><td>183,00</td><td>29,28</td></tr>
-                <tr><td>12,20 x 17,50</td><td>213,50</td><td>34,16</td></tr>
-                <tr><td>12,20 x 25,00</td><td>305,00</td><td>48,80</td></tr>
-                <tr><td>15,60 x 25,00</td><td>390,00</td><td>62,40</td></tr>
-            </tbody>
+            <tbody id="tarpTableBody"></tbody>
         </table>
+        <div class="custom-length-row" style="flex-wrap:wrap; margin-top:12px;">
+            <input type="number" id="newTarpW" min="1" max="50" step="0.05" placeholder="Šířka (m)" style="max-width:120px">
+            <input type="number" id="newTarpL" min="1" max="200" step="0.5" placeholder="Délka (m)" style="max-width:120px">
+            <input type="number" id="newTarpKg" min="0" step="0.1" placeholder="Hmotnost (kg)" style="max-width:140px">
+            <button type="button" class="custom-length-add" onclick="app.addTarp()">+ <span data-t="btnAddLen">Přidat</span></button>
+            <button type="button" class="custom-length-add" style="border-color:#94a3b8;color:#64748b" onclick="app.restoreDefaultTarps()"><span data-t="btnRestoreDefaults">Obnovit výchozí</span></button>
+        </div>
     </div>
 
     <div id="manualPanel" class="manual-overlay">
@@ -687,7 +686,7 @@
     </div>
 
     <div class="version-footer">
-        <span data-t="formVersion">Verze formuláře</span>: 1.50
+        <span data-t="formVersion">Verze formuláře</span>: 1.51
     </div>
 </div>
 
@@ -722,16 +721,18 @@
     window.app = {
         lang: 'cs',
         BALE_TYPE: 'round',
-        DOSTUPNE_PLACHTY: [
-            { w: 6.15, l: 12.5, name: "Flortex 55/160 - 6,15 x 12,50 m" },
-            { w: 6.15, l: 25.0, name: "Flortex 55/160 - 6,15 x 25,00 m" },
-            { w: 9.80, l: 12.5, name: "Flortex 55/160 - 9,80 x 12,50 m" },
-            { w: 9.80, l: 25.0, name: "Flortex 55/160 - 9,80 x 25,00 m" },
-            { w: 12.20, l: 15.0, name: "Flortex 55/160 - 12,20 x 15,00 m" },
-            { w: 12.20, l: 17.5, name: "Flortex 55/160 - 12,20 x 17,50 m" },
-            { w: 12.20, l: 25.0, name: "Flortex 55/160 - 12,20 x 25,00 m" },
-            { w: 15.60, l: 25.0, name: "Flortex 55/160 - 15,60 x 25,00 m" }
+        TARPS_KEY: 'flortexTarps_v1',
+        DEFAULT_PLACHTY: [
+            { w: 6.15, l: 12.5, kg: 12.30 },
+            { w: 6.15, l: 25.0, kg: 24.60 },
+            { w: 9.80, l: 12.5, kg: 19.60 },
+            { w: 9.80, l: 25.0, kg: 39.60 },
+            { w: 12.20, l: 15.0, kg: 29.28 },
+            { w: 12.20, l: 17.5, kg: 34.16 },
+            { w: 12.20, l: 25.0, kg: 48.80 },
+            { w: 15.60, l: 25.0, kg: 62.40 }
         ],
+        DOSTUPNE_PLACHTY: [],
         translations: {
             cs: {
                 pageTitle: "Kalkulačka stohu a plachty",
@@ -769,6 +770,10 @@
                 thSize: "Velikost (m)",
                 thArea: "Množství (m²)",
                 thWeight: "Hmotnost (kg)",
+                btnRestoreDefaults: "Obnovit výchozí",
+                confirmDeleteTarp: "Odstranit plachtu {name}?",
+                confirmRestore: "Obnovit výchozí seznam plachet?",
+                errLastTarp: "Nelze odstranit poslední plachtu.",
                 itemOrg: "Zvolená organizace:",
                 itemDepth: "Hloubka stohu:",
                 itemBaseW: "Šířka základny:",
@@ -888,6 +893,10 @@
                 thSize: "Veľkosť (m)",
                 thArea: "Množstvo (m²)",
                 thWeight: "Hmotnosť (kg)",
+                btnRestoreDefaults: "Obnoviť predvolené",
+                confirmDeleteTarp: "Odstrániť plachtu {name}?",
+                confirmRestore: "Obnoviť predvolený zoznam plachiet?",
+                errLastTarp: "Nie je možné odstrániť poslednú plachtu.",
                 itemOrg: "Zvolená organizácia:",
                 itemDepth: "Hĺbka stohu:",
                 itemBaseW: "Šírka základne:",
@@ -1007,6 +1016,10 @@
                 thSize: "Size (m)",
                 thArea: "Area (m²)",
                 thWeight: "Weight (kg)",
+                btnRestoreDefaults: "Restore defaults",
+                confirmDeleteTarp: "Remove tarp {name}?",
+                confirmRestore: "Restore the default tarp list?",
+                errLastTarp: "Cannot remove the last tarp.",
                 itemOrg: "Organization:",
                 itemDepth: "Stack Depth:",
                 itemBaseW: "Base Width:",
@@ -1126,6 +1139,10 @@
                 thSize: "Misura (m)",
                 thArea: "Area (m²)",
                 thWeight: "Peso (kg)",
+                btnRestoreDefaults: "Ripristina predefiniti",
+                confirmDeleteTarp: "Rimuovere il telo {name}?",
+                confirmRestore: "Ripristinare l'elenco predefinito dei teli?",
+                errLastTarp: "Impossibile rimuovere l'ultimo telo.",
                 itemOrg: "Organizzazione:",
                 itemDepth: "Profondità:",
                 itemBaseW: "Largh. base:",
@@ -1245,6 +1262,10 @@
                 thSize: "Wymiar (m)",
                 thArea: "Powierzchnia",
                 thWeight: "Waga (kg)",
+                btnRestoreDefaults: "Przywróć domyślne",
+                confirmDeleteTarp: "Usunąć plandekę {name}?",
+                confirmRestore: "Przywrócić domyślną listę plandek?",
+                errLastTarp: "Nie można usunąć ostatniej plandeki.",
                 itemOrg: "Organizacja:",
                 itemDepth: "Głębokość:",
                 itemBaseW: "Szer. podstawy:",
@@ -1364,6 +1385,10 @@
                 thSize: "Medida (m)",
                 thArea: "Área",
                 thWeight: "Peso (kg)",
+                btnRestoreDefaults: "Restaurar predeterminados",
+                confirmDeleteTarp: "¿Eliminar la lona {name}?",
+                confirmRestore: "¿Restaurar la lista de lonas predeterminada?",
+                errLastTarp: "No se puede eliminar la última lona.",
                 itemOrg: "Organización:",
                 itemDepth: "Profundidad:",
                 itemBaseW: "Ancho base:",
@@ -1467,6 +1492,10 @@
             if (totalInput) totalInput.placeholder = this.getText('phTotalBales');
             const customLenInput = document.getElementById('customLengthInput');
             if (customLenInput) customLenInput.placeholder = this.getText('labelCustomLen');
+            const tarpW = document.getElementById('newTarpW'), tarpL = document.getElementById('newTarpL'), tarpKg = document.getElementById('newTarpKg');
+            if (tarpW) tarpW.placeholder = this.getText('labelWidth');
+            if (tarpL) tarpL.placeholder = this.getText('labelLength');
+            if (tarpKg) tarpKg.placeholder = this.getText('thWeight');
 
             if (this.wizard.active) this.wizard.updateUI();
             if (document.getElementById('results').style.display === 'block') this.vypocitat();
@@ -1484,12 +1513,86 @@
             document.getElementById('tarpInfoPanel').style.display = 'none';
         },
 
+        // ── správa katalogu dostupných plachet ──
+        fmtNum(n) { return n.toFixed(2).replace('.', ','); },
+
+        makeTarpName(w, l) { return `Flortex 55/160 - ${this.fmtNum(w)} x ${this.fmtNum(l)} m`; },
+
+        normalizeTarps(arr) {
+            return arr
+                .filter(p => p && isFinite(p.w) && isFinite(p.l) && p.w > 0 && p.l > 0)
+                .map(p => ({ w: p.w, l: p.l, kg: isFinite(p.kg) && p.kg > 0 ? p.kg : Math.round(p.w * p.l * 0.16 * 100) / 100, name: this.makeTarpName(p.w, p.l) }))
+                .sort((a, b) => a.w - b.w || a.l - b.l);
+        },
+
+        loadTarps() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(this.TARPS_KEY));
+                if (Array.isArray(saved) && saved.length) {
+                    const tarps = this.normalizeTarps(saved);
+                    if (tarps.length) return tarps;
+                }
+            } catch (e) {}
+            return this.normalizeTarps(this.DEFAULT_PLACHTY);
+        },
+
+        saveTarps() {
+            try { localStorage.setItem(this.TARPS_KEY, JSON.stringify(this.DOSTUPNE_PLACHTY.map(p => ({ w: p.w, l: p.l, kg: p.kg })))); } catch (e) {}
+            this.renderTarpTable();
+            this.saveConfig();
+        },
+
+        renderTarpTable() {
+            const tbody = document.getElementById('tarpTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            this.DOSTUPNE_PLACHTY.forEach((p, i) => {
+                const tr = document.createElement('tr');
+                const area = Math.round(p.w * p.l * 1000) / 1000;
+                tr.innerHTML = `<td>${this.fmtNum(p.w)} x ${this.fmtNum(p.l)}</td><td>${String(area).replace('.', ',')}</td><td>${this.fmtNum(p.kg)}</td>`;
+                const td = document.createElement('td');
+                const del = document.createElement('button');
+                del.type = 'button'; del.className = 'check-item-remove'; del.textContent = '✕';
+                del.onclick = () => this.deleteTarp(i);
+                td.appendChild(del);
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            });
+        },
+
+        addTarp() {
+            const errEl = document.getElementById('input_error');
+            const w = parseFloat(String(document.getElementById('newTarpW').value).replace(',', '.'));
+            const l = parseFloat(String(document.getElementById('newTarpL').value).replace(',', '.'));
+            const kg = parseFloat(String(document.getElementById('newTarpKg').value).replace(',', '.'));
+            if (isNaN(w) || w < 1 || w > 50 || isNaN(l) || l < 1 || l > 200) { errEl.innerText = this.getText('errInvalidNum'); return; }
+            errEl.innerText = '';
+            if (this.DOSTUPNE_PLACHTY.some(p => Math.abs(p.w - w) < 0.01 && Math.abs(p.l - l) < 0.01)) return;
+            this.DOSTUPNE_PLACHTY = this.normalizeTarps([...this.DOSTUPNE_PLACHTY, { w, l, kg }]);
+            ['newTarpW', 'newTarpL', 'newTarpKg'].forEach(id => document.getElementById(id).value = '');
+            this.saveTarps();
+        },
+
+        deleteTarp(i) {
+            const tarp = this.DOSTUPNE_PLACHTY[i];
+            if (!tarp) return;
+            if (this.DOSTUPNE_PLACHTY.length <= 1) { alert(this.getText('errLastTarp')); return; }
+            if (!confirm(this.getText('confirmDeleteTarp').replace('{name}', tarp.name))) return;
+            this.DOSTUPNE_PLACHTY.splice(i, 1);
+            this.saveTarps();
+        },
+
+        restoreDefaultTarps() {
+            if (!confirm(this.getText('confirmRestore'))) return;
+            this.DOSTUPNE_PLACHTY = this.normalizeTarps(this.DEFAULT_PLACHTY);
+            this.saveTarps();
+        },
+
         // Název plachty z katalogu; pro vlastní (nekatalogové) délky sestaví popis ručně
         tarpName(width, len) {
             const tarp = this.DOSTUPNE_PLACHTY.find(p => (p.w === width && p.l === len) || (p.l === width && p.w === len));
             if (tarp) return tarp.name;
-            const fmt = n => n.toFixed(2).replace('.', ',');
-            return `Flortex 55/160 - ${fmt(width)} x ${fmt(len)} m (${this.getText('customLenTag')})`;
+            return `${this.makeTarpName(width, len)} (${this.getText('customLenTag')})`;
         },
 
         prefValueExists(v) {
@@ -1672,6 +1775,7 @@
                 cover: document.getElementById('cover_method').value,
                 prefLengths: prefs,
                 customLengths: Array.from(document.querySelectorAll('#prefLengthsChecklist input[data-custom]')).map(i => i.value),
+                tarps: this.DOSTUPNE_PLACHTY.map(p => ({ w: p.w, l: p.l, kg: p.kg })),
                 lang: this.lang
             };
             try {
@@ -1699,6 +1803,14 @@
                     document.getElementById('base_width_round').value = d.base_round !== undefined ? d.base_round : '';
                     document.getElementById('base_width_square').value = d.base_sq !== undefined ? d.base_sq : '';
                     document.getElementById('cover_method').value = d.cover !== undefined ? d.cover : '';
+                    if (Array.isArray(d.tarps) && d.tarps.length) {
+                        const tarps = this.normalizeTarps(d.tarps);
+                        if (tarps.length) {
+                            this.DOSTUPNE_PLACHTY = tarps;
+                            try { localStorage.setItem(this.TARPS_KEY, JSON.stringify(tarps.map(p => ({ w: p.w, l: p.l, kg: p.kg })))); } catch (e) {}
+                            this.renderTarpTable();
+                        }
+                    }
                     if (d.customLengths) d.customLengths.forEach(v => this.addCustomLengthCheckbox(parseFloat(v), false));
                     if (d.prefLengths) document.querySelectorAll('#prefLengthsChecklist input').forEach(input => input.checked = d.prefLengths.includes(input.value));
                     document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.value === this.BALE_TYPE));
@@ -1731,6 +1843,8 @@
         },
 
         init() {
+            this.DOSTUPNE_PLACHTY = this.loadTarps();
+            this.renderTarpTable();
             document.getElementById('calculateButton').onclick = () => { this.vypocitat(); this.saveConfig(); if(this.wizard.active) this.wizard.stop(); };
             document.getElementById('resetButton').onclick = () => { this.resetForm(); };
             document.querySelectorAll('#baleTypeToggle .toggle-btn').forEach(btn => {
